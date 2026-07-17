@@ -1,0 +1,6 @@
+# local Claude Code tooling (machine-specific paths)
+.claude/
+
+# OS noise
+Thumbs.db
+.DS_Store

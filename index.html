@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Joy of Water — New Mexico</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <nav id="toggle">
+        <button data-view="precipitation">PRECIPITATION</button>
+        <span class="sep">/</span>
+        <button data-view="snowpack">SNOWPACK</button>
+        <span class="sep">/</span>
+        <button data-view="streamflow">STREAMFLOW</button>
+        <span class="sep">/</span>
+        <button data-view="storage">STORAGE</button>
+        <span class="sep">/</span>
+        <button data-view="groundwater">GROUNDWATER</button>
+        <span class="sep">/</span>
+        <button data-view="otowi">OTOWI</button>
+        <span class="sep">·</span>
+        <button id="labels-toggle">LABELS</button>
+      </nav>
+      <p id="info"></p>
+    </header>
+    <svg id="plot" role="img" aria-label="Stacked ridgeline chart of New Mexico water data"></svg>
+    <footer id="sources"></footer>
+  </main>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
