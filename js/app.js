@@ -1,5 +1,5 @@
 import { renderJoyplot } from './ridgeline.js';
-import { buildCategoryViews, buildCenturyView } from './views.js';
+import { buildCategoryViews, buildCenturyView, buildMonthTicks, bucketRange } from './views.js';
 
 const svg = document.getElementById('plot');
 const infoEl = document.getElementById('info');
@@ -20,23 +20,26 @@ const [precipitation, snowpack, streamflow, reservoirs, groundwater, century, ma
 
 const categoryViews = buildCategoryViews({ precipitation, snowpack, streamflow, reservoirs, groundwater });
 
-// Sparse category views get capped, centered row spacing; Otowi keeps the
-// full-height layout that the century view was tuned on.
+// All category views share the same bucket-date axis; Otowi keeps the
+// full-height layout the century view was tuned on.
+const monthTicks = buildMonthTicks(categoryViews.streamflow[0].series[0].dates);
+const catOpts = { plotTop: 70, maxRowGap: 26, fitHeight: true, monthTicks };
+
 const views = {
-  precipitation: { groups: categoryViews.precipitation, opts: { maxRowGap: 26, centerBlock: true } },
-  snowpack: { groups: categoryViews.snowpack, opts: { maxRowGap: 26, centerBlock: true } },
-  streamflow: { groups: categoryViews.streamflow, opts: { maxRowGap: 26, centerBlock: true } },
-  storage: { groups: categoryViews.storage, opts: { maxRowGap: 26, centerBlock: true } },
-  groundwater: { groups: categoryViews.groundwater, opts: { maxRowGap: 26, centerBlock: true } },
+  precipitation: { groups: categoryViews.precipitation, opts: catOpts },
+  snowpack: { groups: categoryViews.snowpack, opts: catOpts },
+  streamflow: { groups: categoryViews.streamflow, opts: catOpts },
+  storage: { groups: categoryViews.storage, opts: catOpts },
+  groundwater: { groups: categoryViews.groundwater, opts: catOpts },
   otowi: { groups: buildCenturyView(century), opts: {} },
 };
 
 const restingInfo = {
-  precipitation: 'NOAA daily precipitation, 14 weather stations north to south — past 12 months',
-  snowpack: 'NRCS SNOTEL snow water equivalent, 10 mountain stations — past 12 months',
-  streamflow: 'USGS daily streamflow, 16 gauges — past 12 months',
-  storage: 'Reclamation reservoir storage, drawn as fraction of capacity — past 12 months',
-  groundwater: 'USGS–ABCWUA well levels, Albuquerque Basin — past 12 months',
+  precipitation: 'NOAA daily precipitation, inches, past 12 months',
+  snowpack: 'NRCS SNOTEL snow water equivalent, inches, past 12 months',
+  streamflow: 'USGS daily streamflow, cubic feet per second, past 12 months',
+  storage: 'Reclamation reservoir storage, acre-feet, past 12 months',
+  groundwater: 'USGS–ABCWUA depth to groundwater, feet, past 12 months',
   otowi: `${century.label} — one line per year, ${Object.keys(century.years).length} years`,
 };
 
@@ -59,13 +62,18 @@ labelsButton.addEventListener('click', () => {
   labelsButton.classList.toggle('on', on);
 });
 
-// hover: map mouse to viewBox coords, hit-test ridges
+// hover: map mouse to viewBox coords, hit-test ridges, read out the value
 svg.addEventListener('mousemove', (e) => {
   const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
   const hit = controller?.hitTest(pt.x, pt.y) ?? null;
-  controller?.setActive(hit);
+  controller?.setActive(hit?.ref ?? null);
+  if (currentView !== 'otowi') controller?.setDot(hit?.ref ?? null, hit?.index);
   if (hit) {
-    infoEl.textContent = `${hit.series.label} · ${hit.series.info}`;
+    const s = hit.ref.series;
+    infoEl.textContent =
+      currentView === 'otowi' || s.raw?.[hit.index] === null
+        ? `${s.label} · ${s.info}`
+        : `${s.label} · ${bucketRange(s.dates[hit.index])} · ${s.fmtValue(s.raw[hit.index])}`;
     infoEl.classList.add('active');
   } else {
     infoEl.textContent = restingInfo[currentView];
@@ -74,6 +82,7 @@ svg.addEventListener('mousemove', (e) => {
 });
 svg.addEventListener('mouseleave', () => {
   controller?.setActive(null);
+  controller?.setDot(null);
   infoEl.textContent = restingInfo[currentView];
   infoEl.classList.remove('active');
 });

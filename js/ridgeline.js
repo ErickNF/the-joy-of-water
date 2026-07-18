@@ -57,21 +57,28 @@ function monotonePath(pts) {
  * Render stacked ridgeline groups into an <svg>.
  *
  * groups: [{ title, amplitude, series: [{ label, info, tick, values: [0..1|null, ...] }] }]
- * opts: { maxRowGap, centerBlock } — cap row spacing and vertically center the
- *       ridge block so sparse views stay dense instead of stretching.
- * Returns a controller: { hitTest(x, y) -> seriesRef|null, setActive(seriesRef|null) }
+ * opts:
+ *   maxRowGap   — cap row spacing so sparse views stay dense
+ *   plotTop     — top of the ridge block (default LAYOUT.plotTop)
+ *   fitHeight   — shrink the viewBox to the rendered block (no dead band)
+ *   monthTicks  — [{ frac 0..1, label }] subtle x-axis labels under the block
+ * Returns a controller:
+ *   { hitTest(x, y) -> { ref, index }|null, setActive(ref|null), setDot(ref, index)|setDot(null) }
  */
-export function renderJoyplot(svg, groups, { maxRowGap = Infinity, centerBlock = false } = {}) {
+export function renderJoyplot(
+  svg,
+  groups,
+  { maxRowGap = Infinity, plotTop = LAYOUT.plotTop, fitHeight = false, monthTicks = null } = {}
+) {
   svg.innerHTML = '';
-  svg.setAttribute('viewBox', `0 0 ${VIEWBOX.width} ${VIEWBOX.height}`);
 
   const allSeries = groups.flatMap((g) => g.series);
   const nRows = allSeries.length + (groups.length - 1) * LAYOUT.groupGapRows;
-  const plotH = LAYOUT.plotBottom - LAYOUT.plotTop;
+  const plotH = LAYOUT.plotBottom - plotTop;
   const rowGap = Math.min(plotH / Math.max(nRows, 1), maxRowGap);
-  const blockTop = centerBlock
-    ? LAYOUT.plotTop + Math.max(0, (plotH - rowGap * (nRows - 1)) / 2)
-    : LAYOUT.plotTop;
+  // Never let the first ridge's full-scale peak clip the top edge.
+  const maxAmp = LAYOUT.amplitudeRows * rowGap * Math.max(...groups.map((g) => g.amplitude ?? 1), 0);
+  const blockTop = Math.max(plotTop, maxAmp + 10);
   const plotW = LAYOUT.plotRight - LAYOUT.plotLeft;
 
   const rendered = []; // {series, group, baseline, amplitude, node, labelNode}
@@ -148,6 +155,32 @@ export function renderJoyplot(svg, groups, { maxRowGap = Infinity, centerBlock =
     row += LAYOUT.groupGapRows;
   }
 
+  const blockBottom = rendered.length
+    ? rendered[rendered.length - 1].baseline
+    : blockTop;
+
+  if (monthTicks) {
+    for (const tick of monthTicks) {
+      svg.appendChild(
+        Object.assign(el('text', {
+          x: (LAYOUT.plotLeft + tick.frac * plotW).toFixed(2),
+          y: (blockBottom + 30).toFixed(2),
+          class: 'month-tick',
+          'text-anchor': 'middle',
+        }), { textContent: tick.label })
+      );
+    }
+  }
+
+  // Single reusable marker for the hovered value, drawn above all ridges.
+  const dot = el('circle', { class: 'hover-dot', r: 2.5, display: 'none' });
+  svg.appendChild(dot);
+
+  const height = fitHeight
+    ? Math.round(blockBottom + (monthTicks ? 60 : 40))
+    : VIEWBOX.height;
+  svg.setAttribute('viewBox', `0 0 ${VIEWBOX.width} ${height}`);
+
   function hitTest(vx, vy) {
     if (vx < LAYOUT.plotLeft - 10 || vx > LAYOUT.plotRight + 10) return null;
     let inside = null; // front-most ridge whose fill contains the point
@@ -155,18 +188,29 @@ export function renderJoyplot(svg, groups, { maxRowGap = Infinity, centerBlock =
     let nearestDist = 14;
     for (const r of rendered) {
       const n = r.series.values.length;
-      const i = Math.round(((vx - LAYOUT.plotLeft) / plotW) * (n - 1));
-      const v = r.series.values[Math.max(0, Math.min(n - 1, i))];
+      const i = Math.max(0, Math.min(n - 1, Math.round(((vx - LAYOUT.plotLeft) / plotW) * (n - 1))));
+      const v = r.series.values[i];
       if (v === null) continue;
       const yCurve = r.baseline - v * r.amplitude;
-      if (vy >= yCurve && vy <= r.baseline) inside = r; // later = nearer = front
+      if (vy >= yCurve && vy <= r.baseline) inside = { ref: r, index: i }; // later = nearer = front
       const dist = Math.abs(vy - yCurve);
       if (dist < nearestDist) {
         nearestDist = dist;
-        nearest = r;
+        nearest = { ref: r, index: i };
       }
     }
     return inside ?? nearest;
+  }
+
+  function setDot(ref, index) {
+    if (!ref || ref.series.values[index] === null) {
+      dot.setAttribute('display', 'none');
+      return;
+    }
+    const n = ref.series.values.length;
+    dot.setAttribute('cx', (LAYOUT.plotLeft + (plotW * index) / (n - 1)).toFixed(2));
+    dot.setAttribute('cy', (ref.baseline - ref.series.values[index] * ref.amplitude).toFixed(2));
+    dot.removeAttribute('display');
   }
 
   let active = null;
@@ -183,5 +227,5 @@ export function renderJoyplot(svg, groups, { maxRowGap = Infinity, centerBlock =
     }
   }
 
-  return { hitTest, setActive };
+  return { hitTest, setActive, setDot };
 }

@@ -17,60 +17,78 @@ const NCEI = 'https://www.ncei.noaa.gov/access/services/data/v1';
 
 // ---------------------------------------------------------------- config
 
+// Watershed slugs: san-juan | rio-grande | pecos | canadian | arkansas | gila.
+// (No active Arkansas-basin data exists — the last Dry Cimarron gage was
+// discontinued in 2024 — so that group currently appears in no view.)
+
 // NOAA GHCN-Daily stations (NCEI daily-summaries), verified live 2026-07,
 // ordered north -> south.
 const GHCN_STATIONS = [
-  { id: 'USC00291664', label: 'Chama' },
-  { id: 'USW00023090', label: 'Farmington' },
-  { id: 'USW00023051', label: 'Clayton' },
-  { id: 'USW00023054', label: 'Las Vegas' },
-  { id: 'USW00023049', label: 'Santa Fe' },
-  { id: 'USW00023081', label: 'Gallup' },
-  { id: 'USW00023048', label: 'Tucumcari' },
-  { id: 'USW00093057', label: 'Grants' },
-  { id: 'USW00023050', label: 'Albuquerque' },
-  { id: 'USW00023009', label: 'Roswell' },
-  { id: 'USW00093045', label: 'Truth or Consequences' },
-  { id: 'USC00290600', label: 'Artesia' },
-  { id: 'USW00093033', label: 'Carlsbad' },
-  { id: 'USW00023078', label: 'Deming' },
+  { id: 'USC00291664', label: 'Chama', watershed: 'rio-grande' },
+  { id: 'USW00023090', label: 'Farmington', watershed: 'san-juan' },
+  { id: 'USW00023051', label: 'Clayton', watershed: 'canadian' },
+  { id: 'USW00023054', label: 'Las Vegas', watershed: 'pecos' },
+  { id: 'USW00023049', label: 'Santa Fe', watershed: 'rio-grande' },
+  { id: 'USW00023048', label: 'Tucumcari', watershed: 'canadian' },
+  { id: 'USW00023050', label: 'Albuquerque', watershed: 'rio-grande' },
+  { id: 'USW00023009', label: 'Roswell', watershed: 'pecos' },
+  { id: 'USW00093045', label: 'Truth or Consequences', watershed: 'rio-grande' },
+  { id: 'USC00290600', label: 'Artesia', watershed: 'pecos' },
+  { id: 'USW00093033', label: 'Carlsbad', watershed: 'pecos' },
+  { id: 'USC00298535', label: 'Las Cruces', watershed: 'rio-grande' },
 ];
 
-// Ordered roughly north -> south within each basin.
-const STREAM_GAUGES = [
-  { id: 'USGS-08279500', label: 'Rio Grande at Embudo' },
-  { id: 'USGS-08290000', label: 'Rio Chama near Chamita' },
-  { id: 'USGS-08313000', label: 'Rio Grande at Otowi Bridge' },
-  { id: 'USGS-08317400', label: 'Rio Grande below Cochiti Dam' },
-  { id: 'USGS-08330000', label: 'Rio Grande at Albuquerque' },
-  { id: 'USGS-08354900', label: 'Rio Grande Floodway at San Acacia' },
-  { id: 'USGS-08358400', label: 'Rio Grande Floodway at San Marcial' },
-  { id: 'USGS-08361000', label: 'Rio Grande below Elephant Butte Dam' },
-  { id: 'USGS-08378500', label: 'Pecos River near Pecos' },
-  { id: 'USGS-08383500', label: 'Pecos River near Puerto de Luna' },
-  { id: 'USGS-08396500', label: 'Pecos River near Artesia' },
-  { id: 'USGS-09355500', label: 'San Juan River near Archuleta' },
-  { id: 'USGS-09365000', label: 'San Juan River at Farmington' },
-  { id: 'USGS-09364500', label: 'Animas River at Farmington' },
-  { id: 'USGS-09368000', label: 'San Juan River at Shiprock' },
-  { id: 'USGS-09430500', label: 'Gila River near Gila' },
+// USGS stream gages, ordered roughly north -> south within each basin.
+const STREAM_GAGES = [
+  { id: 'USGS-08279500', label: 'Rio Grande at Embudo', watershed: 'rio-grande' },
+  { id: 'USGS-08290000', label: 'Rio Chama near Chamita', watershed: 'rio-grande' },
+  { id: 'USGS-08313000', label: 'Rio Grande at Otowi Bridge', watershed: 'rio-grande' },
+  { id: 'USGS-08317400', label: 'Rio Grande below Cochiti Dam', watershed: 'rio-grande' },
+  { id: 'USGS-08330000', label: 'Rio Grande at Albuquerque', watershed: 'rio-grande' },
+  { id: 'USGS-08354900', label: 'Rio Grande Floodway at San Acacia', watershed: 'rio-grande' },
+  { id: 'USGS-08358400', label: 'Rio Grande Floodway at San Marcial', watershed: 'rio-grande' },
+  { id: 'USGS-08361000', label: 'Rio Grande below Elephant Butte Dam', watershed: 'rio-grande' },
+  { id: 'USGS-08378500', label: 'Pecos River near Pecos', watershed: 'pecos' },
+  { id: 'USGS-08383500', label: 'Pecos River near Puerto de Luna', watershed: 'pecos' },
+  { id: 'USGS-08396500', label: 'Pecos River near Artesia', watershed: 'pecos' },
+  { id: 'USGS-09355500', label: 'San Juan River near Archuleta', watershed: 'san-juan' },
+  { id: 'USGS-09365000', label: 'San Juan River at Farmington', watershed: 'san-juan' },
+  { id: 'USGS-09368000', label: 'San Juan River at Shiprock', watershed: 'san-juan' },
+  { id: 'USGS-07221500', label: 'Canadian River near Sanchez', watershed: 'canadian' },
+  { id: 'USGS-07227000', label: 'Canadian River at Logan', watershed: 'canadian' },
+  { id: 'USGS-09430500', label: 'Gila River near Gila', watershed: 'gila' },
 ];
 
 // RISE daily Lake/Reservoir Storage catalog items (af). Capacities are
 // approximate active capacities from Reclamation; omitted where uncertain.
+// (Conchas and Ute on the Canadian are USACE/state reservoirs — not in RISE.)
 const RESERVOIRS = [
-  { itemId: 420, label: 'Heron', capacityAf: 199113 },
-  { itemId: 335, label: 'El Vado', capacityAf: 186250 },
-  { itemId: 613, label: 'Navajo', capacityAf: 1708600 },
-  { itemId: 329, label: 'Elephant Butte', capacityAf: 1973878 },
-  { itemId: 209, label: 'Caballo', capacityAf: 224933 },
-  { itemId: 784, label: 'Sumner', capacityAf: null },
-  { itemId: 203, label: 'Brantley', capacityAf: null },
+  { itemId: 420, label: 'Heron', capacityAf: 199113, watershed: 'rio-grande' },
+  { itemId: 335, label: 'El Vado', capacityAf: 186250, watershed: 'rio-grande' },
+  { itemId: 613, label: 'Navajo', capacityAf: 1708600, watershed: 'san-juan' },
+  { itemId: 329, label: 'Elephant Butte', capacityAf: 1973878, watershed: 'rio-grande' },
+  { itemId: 209, label: 'Caballo', capacityAf: 224933, watershed: 'rio-grande' },
+  { itemId: 784, label: 'Sumner', capacityAf: null, watershed: 'pecos' },
+  { itemId: 203, label: 'Brantley', capacityAf: null, watershed: 'pecos' },
 ];
+
+// SNOTEL: HUC subregion prefix -> watershed, for every NM and CO station
+// that drains to a New Mexico river (CO headwaters of the Rio Grande and
+// San Juan count; CO's Arkansas headwaters never reach NM and don't).
+const SNOTEL_HUC_WATERSHEDS = {
+  1408: 'san-juan',
+  1301: 'rio-grande',
+  1302: 'rio-grande',
+  1306: 'pecos',
+  1307: 'pecos',
+  1108: 'canadian',
+  1109: 'canadian',
+  1110: 'canadian',
+  1504: 'gila',
+};
 
 const GW_BBOX = '-107.2,34.85,-106.2,35.25'; // Albuquerque Basin
 const GW_MAX_WELLS = 14;
-const SNOTEL_MAX_STATIONS = 10;
 
 const NOW_DAYS = 366; // window for the "Now" view
 const CENTURY_SITE = { id: 'USGS-08313000', label: 'Rio Grande at Otowi Bridge' };
@@ -156,7 +174,7 @@ async function usgsDaily(siteId, parameterCode, start, end) {
 
 async function fetchStreamflow() {
   const series = [];
-  for (const g of STREAM_GAUGES) {
+  for (const g of STREAM_GAGES) {
     try {
       const map = await usgsDaily(g.id, '00060', nowStart, nowEnd);
       if (!map.size) throw new Error('no data returned');
@@ -164,6 +182,7 @@ async function fetchStreamflow() {
         id: g.id,
         label: g.label,
         unit: 'cfs',
+        watershed: g.watershed,
         points: downsample(padDaily(map, nowStart, nowEnd)),
       });
       console.log(`  streamflow ${g.label}: ${map.size} days`);
@@ -209,6 +228,7 @@ async function fetchGroundwater() {
         id: w.id,
         label: name,
         unit: 'ft below surface',
+        watershed: 'rio-grande',
         points: downsample(padDaily(map, nowStart, nowEnd)),
       });
       console.log(`  groundwater ${name}: ${map.size} days`);
@@ -268,6 +288,7 @@ async function fetchReservoirs() {
         label: r.label,
         unit: 'af',
         capacityAf: r.capacityAf,
+        watershed: r.watershed,
         points: downsample(padDaily(map, nowStart, nowEnd)),
       });
       console.log(`  reservoir ${r.label}: ${map.size} days`);
@@ -283,30 +304,33 @@ async function fetchReservoirs() {
 // ---------------------------------------------------------------- AWDB
 
 async function fetchSnowpack() {
-  const stations = await fetchJSON(`${AWDB}/stations?stationTriplets=*:NM:SNTL`);
-  // Prefer long-record stations, then pick a latitude spread across the state.
-  const candidates = stations
-    .filter((s) => s.beginDate < '2015')
-    .sort((a, b) => b.latitude - a.latitude);
-  const picked = [];
-  if (candidates.length <= SNOTEL_MAX_STATIONS) {
-    picked.push(...candidates);
-  } else {
-    for (let i = 0; i < SNOTEL_MAX_STATIONS; i++) {
-      picked.push(candidates[Math.round((i * (candidates.length - 1)) / (SNOTEL_MAX_STATIONS - 1))]);
-    }
-  }
-  console.log(`  snowpack: ${picked.length} SNOTEL stations of ${stations.length} in NM`);
+  const stations = await fetchJSON(`${AWDB}/stations?stationTriplets=*:NM:SNTL,*:CO:SNTL`);
+  // Keep every active NM/CO station whose HUC drains to a NM watershed,
+  // ordered by watershed then north -> south.
+  const order = ['san-juan', 'rio-grande', 'pecos', 'canadian', 'arkansas', 'gila'];
+  const picked = stations
+    .filter((s) => s.endDate > nowEnd && SNOTEL_HUC_WATERSHEDS[(s.huc ?? '').slice(0, 4)])
+    .map((s) => ({ ...s, watershed: SNOTEL_HUC_WATERSHEDS[s.huc.slice(0, 4)] }))
+    .sort((a, b) =>
+      order.indexOf(a.watershed) - order.indexOf(b.watershed) || b.latitude - a.latitude
+    );
+  console.log(`  snowpack: ${picked.length} SNOTEL stations (of ${stations.length} in NM+CO)`);
 
-  const triplets = picked.map((s) => s.stationTriplet).join(',');
-  const data = await fetchJSON(
-    `${AWDB}/data?stationTriplets=${encodeURIComponent(triplets)}&elements=WTEQ&duration=DAILY` +
-      `&beginDate=${nowStart}&endDate=${nowEnd}`
-  );
+  // Batch the WTEQ request in chunks to keep URLs comfortable.
+  const byTriplet = new Map();
+  for (let i = 0; i < picked.length; i += 35) {
+    const triplets = picked.slice(i, i + 35).map((s) => s.stationTriplet).join(',');
+    const data = await fetchJSON(
+      `${AWDB}/data?stationTriplets=${encodeURIComponent(triplets)}&elements=WTEQ&duration=DAILY` +
+        `&beginDate=${nowStart}&endDate=${nowEnd}`
+    );
+    for (const rec of data ?? []) byTriplet.set(rec.stationTriplet, rec);
+    await sleep(400);
+  }
+
   const series = [];
   for (const st of picked) {
-    const rec = (data ?? []).find((d) => d.stationTriplet === st.stationTriplet);
-    const values = rec?.data?.[0]?.values ?? [];
+    const values = byTriplet.get(st.stationTriplet)?.data?.[0]?.values ?? [];
     if (!values.length) {
       failures.push(`snowpack ${st.stationTriplet} (${st.name}): no data returned`);
       console.warn(`  !! snowpack ${st.name}: no data returned`);
@@ -315,13 +339,14 @@ async function fetchSnowpack() {
     const map = new Map(values.filter((v) => v.value !== null).map((v) => [v.date, v.value]));
     series.push({
       id: st.stationTriplet,
-      label: `${st.name} SNOTEL`,
+      label: st.stateCode === 'CO' ? `${st.name} SNOTEL (CO)` : `${st.name} SNOTEL`,
       unit: 'in SWE',
       elevationFt: st.elevation,
+      watershed: st.watershed,
       points: downsample(padDaily(map, nowStart, nowEnd)),
     });
-    console.log(`  snowpack ${st.name}: ${map.size} days`);
   }
+  console.log(`  snowpack: ${series.length} stations fetched`);
   return { fetched: nowEnd, series };
 }
 
@@ -345,6 +370,7 @@ async function fetchPrecipitation() {
         id: st.id,
         label: st.label,
         unit: 'in',
+        watershed: st.watershed,
         points: downsample(padDaily(map, nowStart, nowEnd), 'sum'),
       });
       console.log(`  precipitation ${st.label}: ${map.size} days`);
