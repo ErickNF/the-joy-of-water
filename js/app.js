@@ -62,6 +62,44 @@ labelsButton.addEventListener('click', () => {
   labelsButton.classList.toggle('on', on);
 });
 
+// Download the current view as a self-contained vector file: styles inlined,
+// black field included, current LABELS state respected.
+document.getElementById('svg-export').addEventListener('click', () => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const clone = svg.cloneNode(true);
+  const [, , w, h] = svg.getAttribute('viewBox').split(' ').map(Number);
+  clone.setAttribute('xmlns', NS);
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
+  clone.classList.remove('hovering');
+  for (const n of clone.querySelectorAll('.active')) n.classList.remove('active');
+
+  const field = document.createElementNS(NS, 'rect');
+  field.setAttribute('width', w);
+  field.setAttribute('height', h);
+  field.setAttribute('fill', '#000');
+  clone.insertBefore(field, clone.firstChild);
+
+  const style = document.createElementNS(NS, 'style');
+  style.textContent = `
+    text { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .ridge-fill { fill: #000; }
+    .ridge-stroke { stroke: #f2f2f2; stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; fill: none; }
+    .group-title { fill: #555; font-size: 10px; letter-spacing: 0.25em; }
+    .row-tick { fill: #444; font-size: 10px; letter-spacing: 0.1em; }
+    .month-tick { fill: #3d3d3d; font-size: 9px; letter-spacing: 0.18em; }
+    .hover-dot { display: none; }
+    .site-label { fill: #555; font-size: 8.5px; letter-spacing: 0.06em; display: ${svg.classList.contains('labels') ? 'block' : 'none'}; }`;
+  clone.insertBefore(style, field);
+
+  const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `the-joy-of-water-${currentView}.svg`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
 // hover: map mouse to viewBox coords, hit-test ridges, read out the value
 svg.addEventListener('mousemove', (e) => {
   const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());

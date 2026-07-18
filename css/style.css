@@ -26,9 +26,9 @@ header { text-align: center; }
   line-height: 2;
 }
 
-#toggle .sep { color: #444; margin: 0 6px; }
+#toggle .sep, #labels-row .sep { color: #444; margin: 0 6px; }
 
-#toggle button, #labels-toggle {
+#toggle button, #labels-row button {
   background: none;
   border: none;
   color: #555;
@@ -38,8 +38,8 @@ header { text-align: center; }
   padding: 4px 2px;
 }
 
-#toggle button:hover, #labels-toggle:hover { color: #aaa; }
-#toggle button.on, #labels-toggle.on { color: #f2f2f2; }
+#toggle button:hover, #labels-row button:hover { color: #aaa; }
+#toggle button.on, #labels-row button.on { color: #f2f2f2; }
 
 #labels-row {
   margin-top: 2px;

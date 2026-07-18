@@ -25,7 +25,9 @@ of the Arkansas basin (the last Dry Cimarron gage was discontinued in 2024).
   years flatten.
 
 **LABELS** toggles discreet site names beside each ridge; hovering any ridge
-highlights it and reads out the plotted value at the cursor.
+highlights it and reads out the plotted value at the cursor. **SVG** downloads
+the current view as a self-contained vector file (styles inlined, label state
+preserved) — ready for Inkscape, Illustrator, or printing at any size.
 
 ## Running
 
