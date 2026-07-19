@@ -101,7 +101,7 @@ function groundwaterSeries(s) {
     values,
     dates: s.points.map((p) => p[0]),
     raw: s.points.map((p) => p[1]),
-    fmtValue: (v) => `${fmt(v, 1)} ft deep`,
+    fmtValue: (v) => `${fmt(v, 1)} ft bgs`,
   };
 }
 

@@ -40,7 +40,7 @@ const restingInfo = {
   streamflow: 'USGS daily streamflow, cubic feet per second, past 12 months',
   storage: 'Reclamation reservoir storage, acre-feet, past 12 months',
   groundwater: 'USGS–ABCWUA depth to groundwater, feet, past 12 months',
-  otowi: `${century.label} — one line per year, ${Object.keys(century.years).length} years`,
+  otowi: `${century.label}`,
 };
 
 let controller = null;
