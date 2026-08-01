@@ -40,6 +40,30 @@ node scripts/serve.mjs   # zero-dep, http://localhost:4173
 
 (or `npx serve` / `python -m http.server` if you prefer)
 
+## Embedding in another site
+
+The page detects when it is loaded inside an iframe and posts its content
+height to the parent window, so the frame can be sized to whichever view is
+showing (Storage is short, Otowi is nearly three times taller). Host page:
+
+```html
+<iframe
+  id="joy-of-water"
+  src="https://ericknf.github.io/the-joy-of-water/"
+  title="The Joy of Water"
+  scrolling="no"
+  style="width:100%; height:700px; border:0; display:block; background:#000;">
+</iframe>
+<script>
+  window.addEventListener('message', function (e) {
+    if (e.origin !== 'https://ericknf.github.io') return;
+    if (e.data && e.data.type === 'joy-of-water:height' && e.data.height > 0) {
+      document.getElementById('joy-of-water').style.height = e.data.height + 'px';
+    }
+  });
+</script>
+```
+
 ## Refreshing the data
 
 ```

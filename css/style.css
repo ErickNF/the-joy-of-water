@@ -9,6 +9,10 @@ body {
   min-height: 100vh;
 }
 
+/* Embedded in an iframe: hug the content so the parent can size the frame
+   to it (a viewport-height floor would make the height self-reinforcing). */
+html.embedded body { min-height: 0; }
+
 main {
   width: 100%;
   max-width: 860px;

@@ -43,6 +43,33 @@ const restingInfo = {
   otowi: `${century.label}`,
 };
 
+// --- iframe embedding -----------------------------------------------------
+// When embedded (e.g. in a Squarespace page), drop the full-viewport minimum
+// height and report our content height to the parent so it can size the frame
+// to the current view — Storage is short, Otowi is nearly three times taller.
+
+const embedded = window.parent !== window;
+if (embedded) document.documentElement.classList.add('embedded');
+
+let heightFrame = null;
+function postHeight() {
+  if (!embedded) return;
+  cancelAnimationFrame(heightFrame);
+  heightFrame = requestAnimationFrame(() => {
+    // Measure the body box, not documentElement.scrollHeight — the latter
+    // never reports less than the viewport, so the frame could only grow.
+    window.parent.postMessage(
+      { type: 'joy-of-water:height', height: Math.ceil(document.body.getBoundingClientRect().height) },
+      '*'
+    );
+  });
+}
+
+if (embedded) {
+  new ResizeObserver(postHeight).observe(document.body);
+  window.addEventListener('load', postHeight);
+}
+
 let controller = null;
 let currentView = 'precipitation';
 
@@ -53,6 +80,7 @@ function show(viewName) {
   infoEl.textContent = restingInfo[viewName];
   infoEl.classList.remove('active');
   for (const b of viewButtons) b.classList.toggle('on', b.dataset.view === viewName);
+  postHeight();
 }
 
 for (const b of viewButtons) b.addEventListener('click', () => show(b.dataset.view));
