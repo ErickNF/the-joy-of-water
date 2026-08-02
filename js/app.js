@@ -32,7 +32,7 @@ const catOpts = (extra = {}) => ({ plotTop: 70, maxRowGap: 26, fitHeight: true, 
 const views = {
   precipitation: { groups: categoryViews.precipitation, opts: catOpts() },
   snowpack: { groups: categoryViews.snowpack, opts: catOpts() },
-  streamflow: { groups: categoryViews.streamflow, opts: catOpts({ maxRowGap: 60 }) },
+  streamflow: { groups: categoryViews.streamflow, opts: catOpts() },
   // Reservoir curves are smooth and slow; give them room so they stop
   // tangling into each other.
   storage: { groups: categoryViews.storage, opts: catOpts({ maxRowGap: 48 }) },

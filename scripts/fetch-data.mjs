@@ -39,18 +39,29 @@ const GHCN_STATIONS = [
   { id: 'USC00298535', label: 'Las Cruces', watershed: 'rio-grande' },
 ];
 
-// A longitudinal profile of the Rio Grande mainstem, north -> south.
-// Cerro is the closest active gage to the Colorado state line (Lobatos, just
-// over the line, stopped reporting daily means at the end of 2024). There is
-// no El Paso entry because USGS has no active gage anywhere below Elephant
-// Butte Dam — Caballo, Leasburg and El Paso are all discontinued, and that
-// reach is now gaged by the IBWC, which publishes outside the USGS API.
+// USGS stream gages, ordered north -> south within each basin.
+//
+// The Rio Grande set is a longitudinal profile of the mainstem. Cerro is the
+// closest active gage to the Colorado state line (Lobatos, just over the line,
+// stopped reporting daily means at the end of 2024). There is no El Paso entry
+// because USGS has no active gage anywhere below Elephant Butte Dam — Caballo,
+// Leasburg and El Paso are all discontinued, and that reach is now gaged by
+// the IBWC, which publishes outside the USGS API.
 const STREAM_GAGES = [
   { id: 'USGS-08263500', label: 'Rio Grande near Cerro', watershed: 'rio-grande' },
   { id: 'USGS-08313000', label: 'Rio Grande at Otowi Bridge', watershed: 'rio-grande' },
   { id: 'USGS-08330000', label: 'Rio Grande at Albuquerque', watershed: 'rio-grande' },
   { id: 'USGS-08358400', label: 'Rio Grande Floodway at San Marcial', watershed: 'rio-grande' },
   { id: 'USGS-08361000', label: 'Rio Grande below Elephant Butte Dam', watershed: 'rio-grande' },
+  { id: 'USGS-09355500', label: 'San Juan River near Archuleta', watershed: 'san-juan' },
+  { id: 'USGS-09365000', label: 'San Juan River at Farmington', watershed: 'san-juan' },
+  { id: 'USGS-09368000', label: 'San Juan River at Shiprock', watershed: 'san-juan' },
+  { id: 'USGS-08378500', label: 'Pecos River near Pecos', watershed: 'pecos' },
+  { id: 'USGS-08383500', label: 'Pecos River near Puerto de Luna', watershed: 'pecos' },
+  { id: 'USGS-08396500', label: 'Pecos River near Artesia', watershed: 'pecos' },
+  { id: 'USGS-07221500', label: 'Canadian River near Sanchez', watershed: 'canadian' },
+  { id: 'USGS-07227000', label: 'Canadian River at Logan', watershed: 'canadian' },
+  { id: 'USGS-09430500', label: 'Gila River near Gila', watershed: 'gila' },
 ];
 
 // RISE daily Lake/Reservoir Storage catalog items (af). Capacities are

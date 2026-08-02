@@ -15,11 +15,13 @@ of the Arkansas basin (the last Dry Cimarron gage was discontinued in 2024).
   that drain to New Mexico's rivers, including the Colorado headwaters of
   the Rio Grande and San Juan. Each basin keeps the stations holding the most
   water, ranked on observed peak SWE.
-- **STREAMFLOW** — the Rio Grande mainstem from the Colorado line to below
-  Elephant Butte: Cerro, Otowi Bridge, Albuquerque, San Marcial, and the dam
-  release. There is no El Paso ridge because USGS has no active gage below
-  Elephant Butte — Caballo, Leasburg and El Paso are all discontinued and
-  that reach is gaged by the IBWC, outside the USGS API.
+- **STREAMFLOW** — USGS daily flow at 14 gages across the San Juan, Rio
+  Grande, Pecos, Canadian and Gila. The Rio Grande set is a longitudinal
+  profile of the mainstem — Cerro (nearest active gage to the Colorado line),
+  Otowi Bridge, Albuquerque, San Marcial, and the Elephant Butte release.
+  There is no El Paso ridge because USGS has no active gage below Elephant
+  Butte — Caballo, Leasburg and El Paso are all discontinued and that reach
+  is gaged by the IBWC, outside the USGS API.
 - **STORAGE** — Bureau of Reclamation reservoir storage. Each reservoir is
   scaled to its own 12-month range so the drawdown-and-refill cycle is
   visible; how full it actually is lives in the label and hover readout.
