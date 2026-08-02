@@ -130,6 +130,9 @@ header {
   letter-spacing: 0.03em;
 }
 
+/* One row per year packs 126 labels into the block — they need to be small. */
+#plot.century .site-name { font-size: 7.5px; letter-spacing: 0.04em; }
+
 .site-label.active .site-name { fill: #e8e8e8; }
 .site-label.active .site-stats { fill: #9a9a9a; }
 

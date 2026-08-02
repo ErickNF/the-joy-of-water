@@ -37,7 +37,9 @@ const views = {
   // tangling into each other.
   storage: { groups: categoryViews.storage, opts: catOpts({ maxRowGap: 48 }) },
   groundwater: { groups: categoryViews.groundwater, opts: catOpts({ maxRowGap: 34 }) },
-  otowi: { groups: buildCenturyView(century), opts: {} },
+  // 126 rows in one block, so a little extra height goes a long way toward
+  // keeping the year labels off each other.
+  otowi: { groups: buildCenturyView(century), opts: { plotBottom: 1265 } },
 };
 
 // Which outline the locator draws for each view.
@@ -115,6 +117,9 @@ function drawLocator(viewName) {
 function show(viewName) {
   currentView = viewName;
   const v = views[viewName];
+  // Century rows sit far closer together than any category view, so its
+  // labels take a smaller size.
+  svg.classList.toggle('century', viewName === 'otowi');
   controller = renderJoyplot(svg, v.groups, v.opts);
   drawLocator(viewName);
   infoEl.textContent = restingInfo[viewName];
@@ -169,6 +174,7 @@ document.getElementById('svg-export').addEventListener('click', () => {
     .site-dot { fill: #7d7d7d; }
     .site-label { display: ${svg.classList.contains('labels') ? 'block' : 'none'}; }
     .site-name { fill: #6a6a6a; font-size: 10px; letter-spacing: 0.05em; }
+    .century .site-name { font-size: 7.5px; letter-spacing: 0.04em; }
     .site-stats { fill: #4d4d4d; font-size: 9px; letter-spacing: 0.03em; }`;
   clone.insertBefore(style, field);
 

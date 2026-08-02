@@ -71,6 +71,7 @@ export function renderJoyplot(
   {
     maxRowGap = Infinity,
     plotTop = LAYOUT.plotTop,
+    plotBottom = LAYOUT.plotBottom,
     fitHeight = false,
     monthTicks = null,
   } = {}
@@ -79,7 +80,7 @@ export function renderJoyplot(
 
   const allSeries = groups.flatMap((g) => g.series);
   const nRows = allSeries.length + (groups.length - 1) * LAYOUT.groupGapRows;
-  const plotH = LAYOUT.plotBottom - plotTop;
+  const plotH = plotBottom - plotTop;
   const rowGap = Math.min(plotH / Math.max(nRows, 1), maxRowGap);
   // Never let the first ridge's full-scale peak clip the top edge.
   const maxAmp = LAYOUT.amplitudeRows * rowGap * Math.max(...groups.map((g) => g.amplitude ?? 1), 0);
@@ -196,7 +197,7 @@ export function renderJoyplot(
 
   const height = fitHeight
     ? Math.round(blockBottom + (monthTicks ? 60 : 40))
-    : VIEWBOX.height;
+    : Math.round(plotBottom + (VIEWBOX.height - LAYOUT.plotBottom));
   svg.setAttribute('viewBox', `0 0 ${VIEWBOX.width} ${height}`);
 
   function hitTest(vx, vy) {
