@@ -21,7 +21,7 @@ function el(name, attrs = {}) {
  */
 export function renderStateMap(svg, { states, codes, sites, yTop, centerX, maxWidth, maxHeight }) {
   const rings = codes.flatMap((c) => states[c] ?? []);
-  if (!rings.length) return { height: 0, setActive() {} };
+  if (!rings.length) return { width: 0, height: 0, setActive() {} };
 
   const lons = rings.flatMap((r) => r.map((p) => p[0]));
   const lats = rings.flatMap((r) => r.map((p) => p[1]));
@@ -81,5 +81,5 @@ export function renderStateMap(svg, { states, codes, sites, yTop, centerX, maxWi
     }
   }
 
-  return { height, setActive };
+  return { width, height, setActive };
 }

@@ -73,7 +73,6 @@ export function renderJoyplot(
     plotTop = LAYOUT.plotTop,
     fitHeight = false,
     monthTicks = null,
-    bottomContent = null,
   } = {}
 ) {
   svg.innerHTML = '';
@@ -195,15 +194,8 @@ export function renderJoyplot(
   const dot = el('circle', { class: 'hover-dot', r: 2.5, display: 'none' });
   svg.appendChild(dot);
 
-  // Optional content below the plot (the site map); returns the height it used.
-  let extra = 0;
-  if (bottomContent) {
-    const yTop = blockBottom + (monthTicks ? 52 : 32);
-    extra = (bottomContent(svg, yTop) ?? 0) + (yTop - blockBottom);
-  }
-
   const height = fitHeight
-    ? Math.round(blockBottom + extra + (monthTicks ? 60 : 40))
+    ? Math.round(blockBottom + (monthTicks ? 60 : 40))
     : VIEWBOX.height;
   svg.setAttribute('viewBox', `0 0 ${VIEWBOX.width} ${height}`);
 

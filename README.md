@@ -28,9 +28,12 @@ of the Arkansas basin (the last Dry Cimarron gage was discontinued in 2024).
 **LABELS** toggles site names beside each ridge, each with a summary pair
 suited to the data — 12-month totals for the flux views (precipitation,
 streamflow), peaks and current levels for the level views (snowpack, storage,
-groundwater). **MAP** toggles a locator map below the plot: New Mexico (plus
-Colorado in the snowpack view) with a dot per site that lights up when its
-ridge is hovered. **EXPORT as SVG** downloads the current view as a
+groundwater). **MAP** toggles a locator map pinned to the corner of the window — New Mexico
+(plus Colorado in the snowpack view) with a dot per site that lights up when
+its ridge is hovered. It is pinned rather than placed below the plot so it
+stays visible while hovering ridges far down a tall view; inside an iframe,
+where the page has no scrollport of its own, it falls back into the flow
+beneath the plot. **EXPORT as SVG** downloads the current view as a
 self-contained vector file — map, labels and all — ready for Inkscape,
 Illustrator, or printing at any size.
 

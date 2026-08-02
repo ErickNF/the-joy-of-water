@@ -119,6 +119,44 @@ header { text-align: center; }
 .site-label.active .site-name { fill: #d9d9d9; }
 .site-label.active .site-stats { fill: #8a8a8a; }
 
+/* Locator map: pinned to the window so it stays visible while hovering
+   ridges anywhere down a tall view. Click-through so it never eats a hover. */
+#locator {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 140px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.88);
+  pointer-events: none;
+  z-index: 10;
+}
+
+#locator svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Inside an iframe the page has no scrollport of its own, so pinning does
+   nothing useful — let it sit in the flow under the plot instead. */
+html.embedded #locator {
+  position: static;
+  margin: 18px auto 0;
+  background: none;
+}
+
+/* On a narrow window the panel would sit on top of the page instead of in
+   the margin beside it, so shrink it — and drop it entirely on phones,
+   where there is no hover for it to answer. */
+@media (max-width: 1000px) {
+  #locator { width: 108px; right: 12px; bottom: 12px; }
+}
+
+@media (max-width: 620px) {
+  #locator { display: none; }
+}
+
 /* locator map */
 .state-outline {
   fill: none;

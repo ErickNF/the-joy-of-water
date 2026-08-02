@@ -8,6 +8,8 @@ const footerEl = document.getElementById('sources');
 const viewButtons = document.querySelectorAll('#toggle button[data-view]');
 const labelsButton = document.getElementById('labels-toggle');
 const mapButton = document.getElementById('map-toggle');
+const locatorEl = document.getElementById('locator');
+const locatorSvg = document.getElementById('locator-map');
 
 async function loadJSON(name) {
   const res = await fetch(`data/${name}.json`);
@@ -77,30 +79,36 @@ let mapControl = null;
 let currentView = 'precipitation';
 let mapEnabled = true;
 
+const sitesOf = (viewName) => views[viewName].groups.flatMap((g) => g.series);
+// Snowpack reaches into the Colorado headwaters; everything else is NM only.
+const mapCodes = (viewName) => (viewName === 'snowpack' ? ['CO', 'NM'] : ['NM']);
+
+// The locator lives in its own pinned <svg>, not in the plot, so it stays on
+// screen while you hover ridges far down a tall view.
+function drawLocator(viewName) {
+  mapControl = null;
+  locatorSvg.innerHTML = '';
+  // Otowi is a single site across 126 years — a locator map says nothing.
+  const wanted = viewName !== 'otowi' && mapEnabled;
+  locatorEl.style.display = wanted ? '' : 'none';
+  if (!wanted) return;
+  mapControl = renderStateMap(locatorSvg, {
+    states: statesFile.states,
+    codes: mapCodes(viewName),
+    sites: sitesOf(viewName),
+    yTop: 3,
+    centerX: 70,
+    maxWidth: 134,
+    maxHeight: viewName === 'snowpack' ? 190 : 150,
+  });
+  locatorSvg.setAttribute('viewBox', `0 0 140 ${Math.ceil(mapControl.height + 6)}`);
+}
+
 function show(viewName) {
   currentView = viewName;
   const v = views[viewName];
-  mapControl = null;
-
-  // Otowi is a single site across 126 years — a locator map says nothing.
-  const opts = { ...v.opts };
-  if (viewName !== 'otowi' && mapEnabled) {
-    const sites = v.groups.flatMap((g) => g.series);
-    opts.bottomContent = (target, yTop) => {
-      mapControl = renderStateMap(target, {
-        states: statesFile.states,
-        codes: viewName === 'snowpack' ? ['CO', 'NM'] : ['NM'],
-        sites,
-        yTop,
-        centerX: 450,
-        maxWidth: 300,
-        maxHeight: viewName === 'snowpack' ? 215 : 165,
-      });
-      return mapControl.height;
-    };
-  }
-
-  controller = renderJoyplot(svg, v.groups, opts);
+  controller = renderJoyplot(svg, v.groups, v.opts);
+  drawLocator(viewName);
   infoEl.textContent = restingInfo[viewName];
   infoEl.classList.remove('active');
   for (const b of viewButtons) b.classList.toggle('on', b.dataset.view === viewName);
@@ -117,7 +125,8 @@ labelsButton.addEventListener('click', () => {
 mapButton.addEventListener('click', () => {
   mapEnabled = !mapEnabled;
   mapButton.classList.toggle('on', mapEnabled);
-  show(currentView);
+  drawLocator(currentView);
+  postHeight();
 });
 
 // Download the current view as a self-contained vector file: styles inlined,
@@ -153,6 +162,25 @@ document.getElementById('svg-export').addEventListener('click', () => {
     .site-name { fill: #555; font-size: 8.5px; letter-spacing: 0.06em; }
     .site-stats { fill: #3d3d3d; font-size: 7.5px; letter-spacing: 0.04em; }`;
   clone.insertBefore(style, field);
+
+  // The on-screen locator is pinned to the window, so draw a fresh one into
+  // the exported file — a printed sheet has no viewport to follow.
+  if (currentView !== 'otowi' && mapEnabled) {
+    const yTop = h + 18;
+    const map = renderStateMap(clone, {
+      states: statesFile.states,
+      codes: mapCodes(currentView),
+      sites: sitesOf(currentView),
+      yTop,
+      centerX: w / 2,
+      maxWidth: 300,
+      maxHeight: currentView === 'snowpack' ? 215 : 165,
+    });
+    const tall = Math.ceil(yTop + map.height + 34);
+    clone.setAttribute('viewBox', `0 0 ${w} ${tall}`);
+    clone.setAttribute('height', tall);
+    field.setAttribute('height', tall);
+  }
 
   const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
   const a = document.createElement('a');
