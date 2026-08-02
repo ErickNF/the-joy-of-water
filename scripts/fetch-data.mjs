@@ -75,6 +75,9 @@ const RESERVOIRS = [
 // SNOTEL: HUC subregion prefix -> watershed, for every NM and CO station
 // that drains to a New Mexico river (CO headwaters of the Rio Grande and
 // San Juan count; CO's Arkansas headwaters never reach NM and don't).
+// Cap the two headwater basins; the others are small enough to keep whole.
+const SNOTEL_CAPS = { 'san-juan': 8, 'rio-grande': 10 };
+
 const SNOTEL_HUC_WATERSHEDS = {
   1408: 'san-juan',
   1301: 'rio-grande',
@@ -172,17 +175,28 @@ async function usgsDaily(siteId, parameterCode, start, end) {
   return map;
 }
 
+// Location metadata for a monitoring location: name and [lon, lat] for the map.
+async function usgsSite(siteId) {
+  const page = await fetchJSON(`${USGS}/collections/monitoring-locations/items/${siteId}?f=json`);
+  const [lon, lat] = page.geometry?.coordinates ?? [];
+  return { name: page.properties?.monitoring_location_name ?? siteId, lon: lon ?? null, lat: lat ?? null };
+}
+
 async function fetchStreamflow() {
   const series = [];
   for (const g of STREAM_GAGES) {
     try {
       const map = await usgsDaily(g.id, '00060', nowStart, nowEnd);
       if (!map.size) throw new Error('no data returned');
+      await sleep(400);
+      const site = await usgsSite(g.id);
       series.push({
         id: g.id,
         label: g.label,
         unit: 'cfs',
         watershed: g.watershed,
+        lat: site.lat,
+        lon: site.lon,
         points: downsample(padDaily(map, nowStart, nowEnd)),
       });
       console.log(`  streamflow ${g.label}: ${map.size} days`);
@@ -219,19 +233,20 @@ async function fetchGroundwater() {
   const series = [];
   for (const w of wells) {
     try {
-      const locPage = await fetchJSON(`${USGS}/collections/monitoring-locations/items/${w.id}?f=json`);
-      const name = locPage.properties?.monitoring_location_name ?? w.id;
+      const site = await usgsSite(w.id);
       await sleep(400);
       const map = await usgsDaily(w.id, '72019', nowStart, nowEnd);
       if (!map.size) throw new Error('no data returned');
       series.push({
         id: w.id,
-        label: name,
+        label: site.name,
         unit: 'ft below surface',
         watershed: 'rio-grande',
+        lat: site.lat,
+        lon: site.lon,
         points: downsample(padDaily(map, nowStart, nowEnd)),
       });
-      console.log(`  groundwater ${name}: ${map.size} days`);
+      console.log(`  groundwater ${site.name}: ${map.size} days`);
     } catch (err) {
       failures.push(`groundwater ${w.id}: ${err.message}`);
       console.warn(`  !! groundwater ${w.id}: ${err.message}`);
@@ -269,6 +284,7 @@ async function fetchReservoirs() {
   for (const r of RESERVOIRS) {
     try {
       const map = new Map();
+      let locationId = null;
       let url =
         `${RISE}/result?itemId=${r.itemId}&dateTime%5Bafter%5D=${nowStart}` +
         `&dateTime%5Bbefore%5D=${nowEnd}&itemsPerPage=400`;
@@ -276,6 +292,7 @@ async function fetchReservoirs() {
         const page = await fetchJSON(url, { headers: { Accept: 'application/vnd.api+json' } });
         for (const row of page.data ?? []) {
           const a = row.attributes;
+          locationId ??= a.locationId;
           if (a.result !== null) map.set(a.dateTime.slice(0, 10), Number(a.result));
         }
         const next = page.links?.next;
@@ -283,12 +300,23 @@ async function fetchReservoirs() {
         if (url) await sleep(400);
       }
       if (!map.size) throw new Error('no data returned');
+      let lat = null, lon = null;
+      if (locationId) {
+        await sleep(400);
+        const loc = await fetchJSON(`${RISE}/location/${locationId}`, {
+          headers: { Accept: 'application/vnd.api+json' },
+        });
+        const c = loc.data?.attributes?.locationCoordinates?.coordinates;
+        if (c) [lon, lat] = c;
+      }
       series.push({
         id: `RISE-${r.itemId}`,
         label: r.label,
         unit: 'af',
         capacityAf: r.capacityAf,
         watershed: r.watershed,
+        lat,
+        lon,
         points: downsample(padDaily(map, nowStart, nowEnd)),
       });
       console.log(`  reservoir ${r.label}: ${map.size} days`);
@@ -308,12 +336,29 @@ async function fetchSnowpack() {
   // Keep every active NM/CO station whose HUC drains to a NM watershed,
   // ordered by watershed then north -> south.
   const order = ['san-juan', 'rio-grande', 'pecos', 'canadian', 'arkansas', 'gila'];
-  const picked = stations
+  const relevant = stations
     .filter((s) => s.endDate > nowEnd && SNOTEL_HUC_WATERSHEDS[(s.huc ?? '').slice(0, 4)])
-    .map((s) => ({ ...s, watershed: SNOTEL_HUC_WATERSHEDS[s.huc.slice(0, 4)] }))
-    .sort((a, b) =>
-      order.indexOf(a.watershed) - order.indexOf(b.watershed) || b.latitude - a.latitude
-    );
+    .map((s) => ({ ...s, watershed: SNOTEL_HUC_WATERSHEDS[s.huc.slice(0, 4)] }));
+
+  // The two headwater basins have far more stations than the view can show.
+  // Prefer long records, then keep an even spread across latitude.
+  const picked = [];
+  for (const watershed of order) {
+    const pool = relevant.filter((s) => s.watershed === watershed);
+    const cap = SNOTEL_CAPS[watershed] ?? Infinity;
+    let keep = pool;
+    if (pool.length > cap) {
+      const longRecord = pool.filter((s) => s.beginDate < '2000');
+      const ranked = (longRecord.length >= cap ? longRecord : pool)
+        .sort((a, b) => b.latitude - a.latitude);
+      keep = Array.from(
+        { length: cap },
+        (_, i) => ranked[Math.round((i * (ranked.length - 1)) / (cap - 1))]
+      );
+    }
+    picked.push(...keep.sort((a, b) => b.latitude - a.latitude));
+    if (pool.length) console.log(`  snowpack ${watershed}: keeping ${keep.length} of ${pool.length}`);
+  }
   console.log(`  snowpack: ${picked.length} SNOTEL stations (of ${stations.length} in NM+CO)`);
 
   // Batch the WTEQ request in chunks to keep URLs comfortable.
@@ -343,6 +388,8 @@ async function fetchSnowpack() {
       unit: 'in SWE',
       elevationFt: st.elevation,
       watershed: st.watershed,
+      lat: st.latitude,
+      lon: st.longitude,
       points: downsample(padDaily(map, nowStart, nowEnd)),
     });
   }
@@ -358,7 +405,7 @@ async function fetchPrecipitation() {
     try {
       const rows = await fetchJSON(
         `${NCEI}?dataset=daily-summaries&stations=${st.id}&dataTypes=PRCP` +
-          `&startDate=${nowStart}&endDate=${nowEnd}&format=json&units=standard`
+          `&startDate=${nowStart}&endDate=${nowEnd}&format=json&units=standard&includeStationLocation=1`
       );
       const map = new Map();
       for (const row of rows ?? []) {
@@ -366,11 +413,14 @@ async function fetchPrecipitation() {
         if (row.DATE && Number.isFinite(v)) map.set(row.DATE, v);
       }
       if (!map.size) throw new Error('no data returned');
+      const loc = (rows ?? []).find((r) => r.LATITUDE && r.LONGITUDE);
       series.push({
         id: st.id,
         label: st.label,
         unit: 'in',
         watershed: st.watershed,
+        lat: loc ? Number(loc.LATITUDE) : null,
+        lon: loc ? Number(loc.LONGITUDE) : null,
         points: downsample(padDaily(map, nowStart, nowEnd), 'sum'),
       });
       console.log(`  precipitation ${st.label}: ${map.size} days`);

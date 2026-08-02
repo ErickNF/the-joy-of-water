@@ -53,7 +53,7 @@ header { text-align: center; }
 }
 
 #info {
-  margin-top: 8px;
+  margin-top: 22px;
   font-size: 11px;
   letter-spacing: 0.12em;
   color: #666;
@@ -100,15 +100,38 @@ header { text-align: center; }
 
 .hover-dot { fill: #f2f2f2; }
 
-.site-label {
+.site-label { display: none; }
+#plot.labels .site-label { display: block; }
+#plot .site-label.active { display: block; }
+
+.site-name {
   fill: #555;
   font-size: 8.5px;
   letter-spacing: 0.06em;
-  display: none;
 }
 
-#plot.labels .site-label { display: block; }
-#plot .site-label.active { display: block; fill: #d9d9d9; }
+.site-stats {
+  fill: #3d3d3d;
+  font-size: 7.5px;
+  letter-spacing: 0.04em;
+}
+
+.site-label.active .site-name { fill: #d9d9d9; }
+.site-label.active .site-stats { fill: #8a8a8a; }
+
+/* locator map */
+.state-outline {
+  fill: none;
+  stroke: #4a4a4a;
+  stroke-width: 0.8;
+}
+
+.site-dot {
+  fill: #6e6e6e;
+  transition: fill 120ms;
+}
+
+.site-dot.active { fill: #f2f2f2; }
 
 footer {
   margin-top: 28px;

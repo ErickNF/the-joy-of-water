@@ -1,4 +1,5 @@
 import { renderJoyplot } from './ridgeline.js';
+import { renderStateMap } from './statemap.js';
 import { buildCategoryViews, buildCenturyView, buildMonthTicks, bucketRange } from './views.js';
 
 const svg = document.getElementById('plot');
@@ -6,6 +7,7 @@ const infoEl = document.getElementById('info');
 const footerEl = document.getElementById('sources');
 const viewButtons = document.querySelectorAll('#toggle button[data-view]');
 const labelsButton = document.getElementById('labels-toggle');
+const mapButton = document.getElementById('map-toggle');
 
 async function loadJSON(name) {
   const res = await fetch(`data/${name}.json`);
@@ -13,9 +15,9 @@ async function loadJSON(name) {
   return res.json();
 }
 
-const [precipitation, snowpack, streamflow, reservoirs, groundwater, century, manifest] =
+const [precipitation, snowpack, streamflow, reservoirs, groundwater, century, manifest, statesFile] =
   await Promise.all(
-    ['precipitation', 'snowpack', 'streamflow', 'reservoirs', 'groundwater', 'century', 'manifest'].map(loadJSON)
+    ['precipitation', 'snowpack', 'streamflow', 'reservoirs', 'groundwater', 'century', 'manifest', 'states'].map(loadJSON)
   );
 
 const categoryViews = buildCategoryViews({ precipitation, snowpack, streamflow, reservoirs, groundwater });
@@ -71,12 +73,34 @@ if (embedded) {
 }
 
 let controller = null;
+let mapControl = null;
 let currentView = 'precipitation';
+let mapEnabled = true;
 
 function show(viewName) {
   currentView = viewName;
   const v = views[viewName];
-  controller = renderJoyplot(svg, v.groups, v.opts);
+  mapControl = null;
+
+  // Otowi is a single site across 126 years — a locator map says nothing.
+  const opts = { ...v.opts };
+  if (viewName !== 'otowi' && mapEnabled) {
+    const sites = v.groups.flatMap((g) => g.series);
+    opts.bottomContent = (target, yTop) => {
+      mapControl = renderStateMap(target, {
+        states: statesFile.states,
+        codes: viewName === 'snowpack' ? ['CO', 'NM'] : ['NM'],
+        sites,
+        yTop,
+        centerX: 450,
+        maxWidth: 300,
+        maxHeight: viewName === 'snowpack' ? 215 : 165,
+      });
+      return mapControl.height;
+    };
+  }
+
+  controller = renderJoyplot(svg, v.groups, opts);
   infoEl.textContent = restingInfo[viewName];
   infoEl.classList.remove('active');
   for (const b of viewButtons) b.classList.toggle('on', b.dataset.view === viewName);
@@ -88,6 +112,12 @@ for (const b of viewButtons) b.addEventListener('click', () => show(b.dataset.vi
 labelsButton.addEventListener('click', () => {
   const on = svg.classList.toggle('labels');
   labelsButton.classList.toggle('on', on);
+});
+
+mapButton.addEventListener('click', () => {
+  mapEnabled = !mapEnabled;
+  mapButton.classList.toggle('on', mapEnabled);
+  show(currentView);
 });
 
 // Download the current view as a self-contained vector file: styles inlined,
@@ -117,7 +147,11 @@ document.getElementById('svg-export').addEventListener('click', () => {
     .row-tick { fill: #444; font-size: 10px; letter-spacing: 0.1em; }
     .month-tick { fill: #3d3d3d; font-size: 9px; letter-spacing: 0.18em; }
     .hover-dot { display: none; }
-    .site-label { fill: #555; font-size: 8.5px; letter-spacing: 0.06em; display: ${svg.classList.contains('labels') ? 'block' : 'none'}; }`;
+    .state-outline { fill: none; stroke: #4a4a4a; stroke-width: 0.8; }
+    .site-dot { fill: #6e6e6e; }
+    .site-label { display: ${svg.classList.contains('labels') ? 'block' : 'none'}; }
+    .site-name { fill: #555; font-size: 8.5px; letter-spacing: 0.06em; }
+    .site-stats { fill: #3d3d3d; font-size: 7.5px; letter-spacing: 0.04em; }`;
   clone.insertBefore(style, field);
 
   const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' });
@@ -134,6 +168,7 @@ svg.addEventListener('mousemove', (e) => {
   const hit = controller?.hitTest(pt.x, pt.y) ?? null;
   controller?.setActive(hit?.ref ?? null);
   if (currentView !== 'otowi') controller?.setDot(hit?.ref ?? null, hit?.index);
+  mapControl?.setActive(hit?.ref.series.id ?? null);
   if (hit) {
     const s = hit.ref.series;
     infoEl.textContent =
@@ -149,6 +184,7 @@ svg.addEventListener('mousemove', (e) => {
 svg.addEventListener('mouseleave', () => {
   controller?.setActive(null);
   controller?.setDot(null);
+  mapControl?.setActive(null);
   infoEl.textContent = restingInfo[currentView];
   infoEl.classList.remove('active');
 });

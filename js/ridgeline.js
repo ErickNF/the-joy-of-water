@@ -68,7 +68,13 @@ function monotonePath(pts) {
 export function renderJoyplot(
   svg,
   groups,
-  { maxRowGap = Infinity, plotTop = LAYOUT.plotTop, fitHeight = false, monthTicks = null } = {}
+  {
+    maxRowGap = Infinity,
+    plotTop = LAYOUT.plotTop,
+    fitHeight = false,
+    monthTicks = null,
+    bottomContent = null,
+  } = {}
 ) {
   svg.innerHTML = '';
 
@@ -142,11 +148,24 @@ export function renderJoyplot(
         );
       }
 
-      const labelNode = Object.assign(el('text', {
-        x: LAYOUT.plotRight + 28,
-        y: baseline + 3,
-        class: 'site-label',
-      }), { textContent: series.label.toUpperCase() });
+      // Label: site name, plus a dimmer stats line beneath it when provided.
+      const labelNode = el('g', { class: 'site-label' });
+      labelNode.appendChild(
+        Object.assign(el('text', {
+          x: LAYOUT.plotRight + 28,
+          y: (baseline + (series.stats ? -1 : 3)).toFixed(2),
+          class: 'site-name',
+        }), { textContent: series.label.toUpperCase() })
+      );
+      if (series.stats) {
+        labelNode.appendChild(
+          Object.assign(el('text', {
+            x: LAYOUT.plotRight + 28,
+            y: (baseline + 9).toFixed(2),
+            class: 'site-stats',
+          }), { textContent: series.stats })
+        );
+      }
       svg.appendChild(labelNode);
 
       rendered.push({ series, baseline, amplitude, node: g, labelNode });
@@ -176,8 +195,15 @@ export function renderJoyplot(
   const dot = el('circle', { class: 'hover-dot', r: 2.5, display: 'none' });
   svg.appendChild(dot);
 
+  // Optional content below the plot (the site map); returns the height it used.
+  let extra = 0;
+  if (bottomContent) {
+    const yTop = blockBottom + (monthTicks ? 52 : 32);
+    extra = (bottomContent(svg, yTop) ?? 0) + (yTop - blockBottom);
+  }
+
   const height = fitHeight
-    ? Math.round(blockBottom + (monthTicks ? 60 : 40))
+    ? Math.round(blockBottom + extra + (monthTicks ? 60 : 40))
     : VIEWBOX.height;
   svg.setAttribute('viewBox', `0 0 ${VIEWBOX.width} ${height}`);
 

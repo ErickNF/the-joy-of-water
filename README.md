@@ -11,23 +11,32 @@ of the Arkansas basin (the last Dry Cimarron gage was discontinued in 2024).
 
 - **PRECIPITATION** — NOAA GHCN daily precipitation at 12 weather stations
   spanning the state north to south (Chama to Las Cruces), past 12 months.
-- **SNOWPACK** — NRCS SNOTEL snow water equivalent at ~56 mountain stations
+- **SNOWPACK** — NRCS SNOTEL snow water equivalent at 25 mountain stations
   that drain to New Mexico's rivers, including the Colorado headwaters of
   the Rio Grande and San Juan, past 12 months.
 - **STREAMFLOW** — USGS daily flow at 17 gages (San Juan, Rio Grande, Chama,
   Pecos, Canadian, Gila), past 12 months.
-- **STORAGE** — Bureau of Reclamation reservoir storage, drawn as a fraction
-  of capacity where known — Elephant Butte's flat line is not a rendering bug.
+- **STORAGE** — Bureau of Reclamation reservoir storage. Each reservoir is
+  scaled to its own 12-month range so the drawdown-and-refill cycle is
+  visible; how full it actually is lives in the label and hover readout.
 - **GROUNDWATER** — USGS/ABCWUA cooperative-network well levels in the
   Albuquerque Basin, past 12 months.
 - **OTOWI** — one ridge per year of Rio Grande at Otowi Bridge daily flow,
   1895 to present, on a single shared scale, so wet years tower and dry
   years flatten.
 
-**LABELS** toggles discreet site names beside each ridge; hovering any ridge
-highlights it and reads out the plotted value at the cursor. **SVG** downloads
-the current view as a self-contained vector file (styles inlined, label state
-preserved) — ready for Inkscape, Illustrator, or printing at any size.
+**LABELS** toggles site names beside each ridge, each with a summary pair
+suited to the data — 12-month totals for the flux views (precipitation,
+streamflow), peaks and current levels for the level views (snowpack, storage,
+groundwater). **MAP** toggles a locator map below the plot: New Mexico (plus
+Colorado in the snowpack view) with a dot per site that lights up when its
+ridge is hovered. **EXPORT as SVG** downloads the current view as a
+self-contained vector file — map, labels and all — ready for Inkscape,
+Illustrator, or printing at any size.
+
+State outlines come from `data/states.json`, built once by
+`scripts/build-states.mjs` from a public US states GeoJSON and simplified to
+a few dozen vertices.
 
 ## Running
 

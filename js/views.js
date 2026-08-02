@@ -17,6 +17,27 @@ const percentile = (values, p) => {
   return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
 };
 
+// 1 cfs sustained for a day = 1.98347 acre-feet.
+const CFS_DAY_TO_AF = 1.98347;
+const BUCKET_DAYS = 3; // snapshots are 3-day buckets
+
+// Index of the largest value, and a "Mar 18" label for its bucket.
+const peakAt = (points) => {
+  let peak = -Infinity, index = -1;
+  points.forEach(([, v], i) => {
+    if (v !== null && v > peak) { peak = v; index = i; }
+  });
+  return { peak: index < 0 ? null : peak, index };
+};
+
+const shortDate = (dateISO) => {
+  const d = new Date(`${dateISO}T00:00:00Z`);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+};
+
+// Fields every series carries through to the renderer and the site map.
+const common = (s) => ({ id: s.id, lat: s.lat ?? null, lon: s.lon ?? null });
+
 // --- per-source normalizations: ------------------------------------------
 // precip: clamp to per-station p99 so one storm doesn't flatten the ridge
 // snowpack: per-station max SWE -> seasonal accumulation curves
@@ -29,8 +50,11 @@ function precipSeries(s) {
   const cap = Math.max(percentile(s.points.map((p) => p[1]), 0.99), 0.01);
   const values = s.points.map(([, v]) => (v === null ? null : Math.min(v / cap, 1)));
   const total = s.points.reduce((a, [, v]) => a + (v ?? 0), 0);
+  const { peak } = peakAt(s.points);
   return {
+    ...common(s),
     label: s.label,
+    stats: `${fmt(total, 1)} in total · ${fmt(peak ?? 0, 2)} in peak`,
     info: `${fmt(total, 1)} in over 12 months`,
     values,
     dates: s.points.map((p) => p[0]),
@@ -42,8 +66,11 @@ function precipSeries(s) {
 function snowpackSeries(s) {
   const max = Math.max(...s.points.map(([, v]) => v ?? 0), 0.1);
   const values = s.points.map(([, v]) => (v === null ? null : Math.max(v, 0) / max));
+  const { peak, index } = peakAt(s.points);
   return {
+    ...common(s),
     label: s.label,
+    stats: `peak ${fmt(max, 1)} in · ${index >= 0 ? shortDate(s.points[index][0]) : 'n/a'}`,
     info: `${fmt(s.elevationFt)} ft · peak ${fmt(max, 1)} in SWE`,
     values,
     dates: s.points.map((p) => p[0]),
@@ -58,8 +85,13 @@ function streamSeries(s) {
     v === null ? null : Math.sqrt(Math.max(v, 0)) / Math.sqrt(max)
   );
   const now = latest(s.points);
+  const { peak } = peakAt(s.points);
+  // Each bucket holds a mean flow that stood for BUCKET_DAYS days.
+  const volumeAf = s.points.reduce((a, [, v]) => a + (v ?? 0) * BUCKET_DAYS * CFS_DAY_TO_AF, 0);
   return {
+    ...common(s),
     label: s.label,
+    stats: `${fmt(volumeAf)} af total · ${fmt(peak ?? 0)} cfs peak`,
     info: now === null ? 'no recent data' : `latest ${fmt(now)} cfs`,
     values,
     dates: s.points.map((p) => p[0]),
@@ -69,14 +101,26 @@ function streamSeries(s) {
 }
 
 function reservoirSeries(s) {
-  const max = Math.max(...s.points.map(([, v]) => v ?? 0), 1);
-  const denom = s.capacityAf ?? max;
-  const values = s.points.map(([, v]) => (v === null ? null : Math.min(v / denom, 1)));
+  // Scale each reservoir to its own 12-month range so the drawdown-and-refill
+  // cycle is visible; absolute fullness lives in the stats line and hover.
+  const vals = s.points.map(([, v]) => v).filter((v) => v !== null);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = Math.max(max - min, 1);
+  const values = s.points.map(([, v]) => (v === null ? null : (v - min) / span));
   const now = latest(s.points);
   let info = now === null ? 'no recent data' : `${fmt(now)} acre-feet`;
   if (now !== null && s.capacityAf) info += ` · ${((100 * now) / s.capacityAf).toFixed(1)}% of capacity`;
+  const nowPart =
+    now === null
+      ? 'no recent data'
+      : s.capacityAf
+        ? `now ${((100 * now) / s.capacityAf).toFixed(1)}% full`
+        : `now ${fmt(now)} af`;
   return {
+    ...common(s),
     label: `${s.label} Reservoir`,
+    stats: `peak ${fmt(max)} af · ${nowPart}`,
     info,
     values,
     dates: s.points.map((p) => p[0]),
@@ -96,7 +140,9 @@ function groundwaterSeries(s) {
   const values = s.points.map(([, v]) => (v === null ? null : (max - v) / span));
   const now = latest(s.points);
   return {
+    ...common(s),
     label: /^\d/.test(s.label) ? s.label.replace(/^\S+\s+/, '') : s.label, // trim township-range prefix
+    stats: `shallowest ${fmt(min, 1)} ft · now ${now === null ? 'n/a' : fmt(now, 1)} ft`,
     info: now === null ? 'no recent data' : `depth to water ${fmt(now, 1)} ft`,
     values,
     dates: s.points.map((p) => p[0]),
