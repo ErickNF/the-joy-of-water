@@ -152,7 +152,7 @@ export function renderJoyplot(
       labelNode.appendChild(
         Object.assign(el('text', {
           x: LAYOUT.plotRight + 28,
-          y: (baseline + (series.stats ? -1 : 3)).toFixed(2),
+          y: (baseline + (series.stats ? -3 : 3)).toFixed(2),
           class: 'site-name',
         }), { textContent: series.label.toUpperCase() })
       );

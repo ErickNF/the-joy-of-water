@@ -22,7 +22,17 @@ main {
   align-items: center;
 }
 
-header { text-align: center; }
+/* Sticky so the nav and the hover readout stay put while you scan ridges
+   down a tall view. */
+header {
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #000;
+  padding-bottom: 10px;
+  width: 100%;
+}
 
 #toggle {
   font-size: 10px;
@@ -105,28 +115,31 @@ header { text-align: center; }
 #plot .site-label.active { display: block; }
 
 .site-name {
-  fill: #555;
-  font-size: 8.5px;
-  letter-spacing: 0.06em;
+  fill: #6a6a6a;
+  font-size: 10px;
+  letter-spacing: 0.05em;
 }
 
 .site-stats {
-  fill: #3d3d3d;
-  font-size: 7.5px;
-  letter-spacing: 0.04em;
+  fill: #4d4d4d;
+  font-size: 9px;
+  letter-spacing: 0.03em;
 }
 
-.site-label.active .site-name { fill: #d9d9d9; }
-.site-label.active .site-stats { fill: #8a8a8a; }
+.site-label.active .site-name { fill: #e8e8e8; }
+.site-label.active .site-stats { fill: #9a9a9a; }
 
 /* Locator map: pinned to the window so it stays visible while hovering
    ridges anywhere down a tall view. Click-through so it never eats a hover. */
 #locator {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 140px;
-  padding: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  /* Hug the right edge of the content column, dropping into the margin on
+     wide screens rather than sitting off in a far corner. */
+  right: max(12px, calc(50% - 596px));
+  width: 156px;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.88);
   pointer-events: none;
   z-index: 10;
@@ -142,15 +155,20 @@ header { text-align: center; }
    nothing useful — let it sit in the flow under the plot instead. */
 html.embedded #locator {
   position: static;
+  transform: none;
   margin: 18px auto 0;
   background: none;
 }
+
+/* Inside an iframe the page never scrolls on its own, so sticking is a no-op
+   that only risks odd overlap — leave the header in the flow. */
+html.embedded header { position: static; }
 
 /* On a narrow window the panel would sit on top of the page instead of in
    the margin beside it, so shrink it — and drop it entirely on phones,
    where there is no hover for it to answer. */
 @media (max-width: 1000px) {
-  #locator { width: 108px; right: 12px; bottom: 12px; }
+  #locator { width: 116px; right: 12px; }
 }
 
 @media (max-width: 620px) {
@@ -158,14 +176,23 @@ html.embedded #locator {
 }
 
 /* locator map */
-.state-outline {
+.map-outline {
   fill: none;
-  stroke: #4a4a4a;
+  stroke: #414141;
   stroke-width: 0.8;
 }
 
+/* Rivers read a touch brighter than the borders — they are the subject. */
+.river {
+  fill: none;
+  stroke: #565656;
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
 .site-dot {
-  fill: #6e6e6e;
+  fill: #7d7d7d;
   transition: fill 120ms;
 }
 

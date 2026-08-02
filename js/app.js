@@ -1,5 +1,5 @@
 import { renderJoyplot } from './ridgeline.js';
-import { renderStateMap } from './statemap.js';
+import { renderLocatorMap } from './statemap.js';
 import { buildCategoryViews, buildCenturyView, buildMonthTicks, bucketRange } from './views.js';
 
 const svg = document.getElementById('plot');
@@ -17,9 +17,9 @@ async function loadJSON(name) {
   return res.json();
 }
 
-const [precipitation, snowpack, streamflow, reservoirs, groundwater, century, manifest, statesFile] =
+const [precipitation, snowpack, streamflow, reservoirs, groundwater, century, manifest, basemap] =
   await Promise.all(
-    ['precipitation', 'snowpack', 'streamflow', 'reservoirs', 'groundwater', 'century', 'manifest', 'states'].map(loadJSON)
+    ['precipitation', 'snowpack', 'streamflow', 'reservoirs', 'groundwater', 'century', 'manifest', 'basemap'].map(loadJSON)
   );
 
 const categoryViews = buildCategoryViews({ precipitation, snowpack, streamflow, reservoirs, groundwater });
@@ -27,16 +27,26 @@ const categoryViews = buildCategoryViews({ precipitation, snowpack, streamflow, 
 // All category views share the same bucket-date axis; Otowi keeps the
 // full-height layout the century view was tuned on.
 const monthTicks = buildMonthTicks(categoryViews.streamflow[0].series[0].dates);
-const catOpts = { plotTop: 70, maxRowGap: 26, fitHeight: true, monthTicks };
+const catOpts = (extra = {}) => ({ plotTop: 70, maxRowGap: 26, fitHeight: true, monthTicks, ...extra });
 
 const views = {
-  precipitation: { groups: categoryViews.precipitation, opts: catOpts },
-  snowpack: { groups: categoryViews.snowpack, opts: catOpts },
-  streamflow: { groups: categoryViews.streamflow, opts: catOpts },
-  storage: { groups: categoryViews.storage, opts: catOpts },
-  groundwater: { groups: categoryViews.groundwater, opts: catOpts },
+  precipitation: { groups: categoryViews.precipitation, opts: catOpts() },
+  snowpack: { groups: categoryViews.snowpack, opts: catOpts() },
+  streamflow: { groups: categoryViews.streamflow, opts: catOpts({ maxRowGap: 60 }) },
+  // Reservoir curves are smooth and slow; give them room so they stop
+  // tangling into each other.
+  storage: { groups: categoryViews.storage, opts: catOpts({ maxRowGap: 48 }) },
+  groundwater: { groups: categoryViews.groundwater, opts: catOpts({ maxRowGap: 34 }) },
   otowi: { groups: buildCenturyView(century), opts: {} },
 };
+
+// Which outline the locator draws for each view.
+const MAP_SHAPE = {
+  // Draw southern Colorado too, but frame on New Mexico plus the stations.
+  snowpack: { codes: ['CO', 'NM'], frameCodes: ['NM'] },
+  groundwater: { county: 'bernalillo' },
+};
+const shapeFor = (viewName) => MAP_SHAPE[viewName] ?? { codes: ['NM'] };
 
 const restingInfo = {
   precipitation: 'NOAA daily precipitation, inches, past 12 months',
@@ -80,8 +90,6 @@ let currentView = 'precipitation';
 let mapEnabled = true;
 
 const sitesOf = (viewName) => views[viewName].groups.flatMap((g) => g.series);
-// Snowpack reaches into the Colorado headwaters; everything else is NM only.
-const mapCodes = (viewName) => (viewName === 'snowpack' ? ['CO', 'NM'] : ['NM']);
 
 // The locator lives in its own pinned <svg>, not in the plot, so it stays on
 // screen while you hover ridges far down a tall view.
@@ -92,16 +100,16 @@ function drawLocator(viewName) {
   const wanted = viewName !== 'otowi' && mapEnabled;
   locatorEl.style.display = wanted ? '' : 'none';
   if (!wanted) return;
-  mapControl = renderStateMap(locatorSvg, {
-    states: statesFile.states,
-    codes: mapCodes(viewName),
+  mapControl = renderLocatorMap(locatorSvg, {
+    basemap,
+    ...shapeFor(viewName),
     sites: sitesOf(viewName),
     yTop: 3,
-    centerX: 70,
-    maxWidth: 134,
-    maxHeight: viewName === 'snowpack' ? 190 : 150,
+    centerX: 78,
+    maxWidth: 150,
+    maxHeight: viewName === 'snowpack' ? 200 : 155,
   });
-  locatorSvg.setAttribute('viewBox', `0 0 140 ${Math.ceil(mapControl.height + 6)}`);
+  locatorSvg.setAttribute('viewBox', `0 0 156 ${Math.ceil(mapControl.height + 6)}`);
 }
 
 function show(viewName) {
@@ -156,20 +164,21 @@ document.getElementById('svg-export').addEventListener('click', () => {
     .row-tick { fill: #444; font-size: 10px; letter-spacing: 0.1em; }
     .month-tick { fill: #3d3d3d; font-size: 9px; letter-spacing: 0.18em; }
     .hover-dot { display: none; }
-    .state-outline { fill: none; stroke: #4a4a4a; stroke-width: 0.8; }
-    .site-dot { fill: #6e6e6e; }
+    .map-outline { fill: none; stroke: #414141; stroke-width: 0.8; }
+    .river { fill: none; stroke: #565656; stroke-width: 0.7; stroke-linejoin: round; stroke-linecap: round; }
+    .site-dot { fill: #7d7d7d; }
     .site-label { display: ${svg.classList.contains('labels') ? 'block' : 'none'}; }
-    .site-name { fill: #555; font-size: 8.5px; letter-spacing: 0.06em; }
-    .site-stats { fill: #3d3d3d; font-size: 7.5px; letter-spacing: 0.04em; }`;
+    .site-name { fill: #6a6a6a; font-size: 10px; letter-spacing: 0.05em; }
+    .site-stats { fill: #4d4d4d; font-size: 9px; letter-spacing: 0.03em; }`;
   clone.insertBefore(style, field);
 
   // The on-screen locator is pinned to the window, so draw a fresh one into
   // the exported file — a printed sheet has no viewport to follow.
   if (currentView !== 'otowi' && mapEnabled) {
     const yTop = h + 18;
-    const map = renderStateMap(clone, {
-      states: statesFile.states,
-      codes: mapCodes(currentView),
+    const map = renderLocatorMap(clone, {
+      basemap,
+      ...shapeFor(currentView),
       sites: sitesOf(currentView),
       yTop,
       centerX: w / 2,

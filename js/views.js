@@ -175,7 +175,9 @@ export function buildCategoryViews({ precipitation, snowpack, streamflow, reserv
     precipitation: groupByWatershed(precipitation.series, precipSeries, 1.0),
     snowpack: groupByWatershed(snowpack.series, snowpackSeries, 1.0),
     streamflow: groupByWatershed(streamflow.series, streamSeries, 1.0),
-    storage: groupByWatershed(reservoirs.series, reservoirSeries, 0.85),
+    // Reservoir traces are smooth and slow; a tall amplitude just tangles
+    // them into each other, so they get a shallower band than the rest.
+    storage: groupByWatershed(reservoirs.series, reservoirSeries, 0.55),
     groundwater: groupByWatershed(groundwater.series, groundwaterSeries, 0.55),
   };
 }

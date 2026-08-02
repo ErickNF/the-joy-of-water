@@ -14,6 +14,7 @@ const USGS = 'https://api.waterdata.usgs.gov/ogcapi/v0';
 const RISE = 'https://data.usbr.gov/rise/api';
 const AWDB = 'https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1';
 const NCEI = 'https://www.ncei.noaa.gov/access/services/data/v1';
+const USACE = 'https://cwms-data.usace.army.mil/cwms-data';
 
 // ---------------------------------------------------------------- config
 
@@ -38,45 +39,56 @@ const GHCN_STATIONS = [
   { id: 'USC00298535', label: 'Las Cruces', watershed: 'rio-grande' },
 ];
 
-// USGS stream gages, ordered roughly north -> south within each basin.
+// A longitudinal profile of the Rio Grande mainstem, north -> south.
+// Cerro is the closest active gage to the Colorado state line (Lobatos, just
+// over the line, stopped reporting daily means at the end of 2024). There is
+// no El Paso entry because USGS has no active gage anywhere below Elephant
+// Butte Dam — Caballo, Leasburg and El Paso are all discontinued, and that
+// reach is now gaged by the IBWC, which publishes outside the USGS API.
 const STREAM_GAGES = [
-  { id: 'USGS-08279500', label: 'Rio Grande at Embudo', watershed: 'rio-grande' },
-  { id: 'USGS-08290000', label: 'Rio Chama near Chamita', watershed: 'rio-grande' },
+  { id: 'USGS-08263500', label: 'Rio Grande near Cerro', watershed: 'rio-grande' },
   { id: 'USGS-08313000', label: 'Rio Grande at Otowi Bridge', watershed: 'rio-grande' },
-  { id: 'USGS-08317400', label: 'Rio Grande below Cochiti Dam', watershed: 'rio-grande' },
   { id: 'USGS-08330000', label: 'Rio Grande at Albuquerque', watershed: 'rio-grande' },
-  { id: 'USGS-08354900', label: 'Rio Grande Floodway at San Acacia', watershed: 'rio-grande' },
   { id: 'USGS-08358400', label: 'Rio Grande Floodway at San Marcial', watershed: 'rio-grande' },
   { id: 'USGS-08361000', label: 'Rio Grande below Elephant Butte Dam', watershed: 'rio-grande' },
-  { id: 'USGS-08378500', label: 'Pecos River near Pecos', watershed: 'pecos' },
-  { id: 'USGS-08383500', label: 'Pecos River near Puerto de Luna', watershed: 'pecos' },
-  { id: 'USGS-08396500', label: 'Pecos River near Artesia', watershed: 'pecos' },
-  { id: 'USGS-09355500', label: 'San Juan River near Archuleta', watershed: 'san-juan' },
-  { id: 'USGS-09365000', label: 'San Juan River at Farmington', watershed: 'san-juan' },
-  { id: 'USGS-09368000', label: 'San Juan River at Shiprock', watershed: 'san-juan' },
-  { id: 'USGS-07221500', label: 'Canadian River near Sanchez', watershed: 'canadian' },
-  { id: 'USGS-07227000', label: 'Canadian River at Logan', watershed: 'canadian' },
-  { id: 'USGS-09430500', label: 'Gila River near Gila', watershed: 'gila' },
 ];
 
 // RISE daily Lake/Reservoir Storage catalog items (af). Capacities are
 // approximate active capacities from Reclamation; omitted where uncertain.
 // (Conchas and Ute on the Canadian are USACE/state reservoirs — not in RISE.)
 const RESERVOIRS = [
-  { itemId: 420, label: 'Heron', capacityAf: 199113, watershed: 'rio-grande' },
-  { itemId: 335, label: 'El Vado', capacityAf: 186250, watershed: 'rio-grande' },
-  { itemId: 613, label: 'Navajo', capacityAf: 1708600, watershed: 'san-juan' },
-  { itemId: 329, label: 'Elephant Butte', capacityAf: 1973878, watershed: 'rio-grande' },
-  { itemId: 209, label: 'Caballo', capacityAf: 224933, watershed: 'rio-grande' },
-  { itemId: 784, label: 'Sumner', capacityAf: null, watershed: 'pecos' },
-  { itemId: 203, label: 'Brantley', capacityAf: null, watershed: 'pecos' },
+  { itemId: 420, label: 'Heron', capacityAf: 199113, watershed: 'rio-grande', order: 1 },
+  { itemId: 335, label: 'El Vado', capacityAf: 186250, watershed: 'rio-grande', order: 2 },
+  { itemId: 329, label: 'Elephant Butte', capacityAf: 1973878, watershed: 'rio-grande', order: 4 },
+  { itemId: 209, label: 'Caballo', capacityAf: 224933, watershed: 'rio-grande', order: 5 },
+  { itemId: 613, label: 'Navajo', capacityAf: 1708600, watershed: 'san-juan', order: 6 },
+  { itemId: 784, label: 'Sumner', capacityAf: null, watershed: 'pecos', order: 7 },
+  { itemId: 203, label: 'Brantley', capacityAf: null, watershed: 'pecos', order: 8 },
+];
+
+// Corps of Engineers lakes, which Reclamation's RISE doesn't carry (its
+// Abiquiu catalog item exists but is empty). Capacity is left null because
+// the authorized figure is mostly flood pool — a "% full" against it would
+// read as permanently near-empty.
+const USACE_RESERVOIRS = [
+  {
+    office: 'SPA',
+    tsid: 'Abiquiu.Stor.Inst.~1Day.0.MRS',
+    locationId: 'Abiquiu',
+    label: 'Abiquiu',
+    capacityAf: null,
+    watershed: 'rio-grande',
+    order: 3,
+  },
 ];
 
 // SNOTEL: HUC subregion prefix -> watershed, for every NM and CO station
 // that drains to a New Mexico river (CO headwaters of the Rio Grande and
 // San Juan count; CO's Arkansas headwaters never reach NM and don't).
-// Cap the two headwater basins; the others are small enough to keep whole.
-const SNOTEL_CAPS = { 'san-juan': 8, 'rio-grande': 10 };
+// How many SNOTEL stations each basin contributes. Within a basin the
+// stations holding the most water (highest peak SWE) win, since those are
+// the ones that actually drive runoff.
+const SNOTEL_CAPS = { 'san-juan': 3, 'rio-grande': 5, pecos: 3, canadian: 1, gila: 3 };
 
 const SNOTEL_HUC_WATERSHEDS = {
   1408: 'san-juan',
@@ -315,6 +327,7 @@ async function fetchReservoirs() {
         unit: 'af',
         capacityAf: r.capacityAf,
         watershed: r.watershed,
+        order: r.order,
         lat,
         lon,
         points: downsample(padDaily(map, nowStart, nowEnd)),
@@ -326,7 +339,60 @@ async function fetchReservoirs() {
     }
     await sleep(400);
   }
+
+  series.push(...(await fetchUsaceReservoirs()));
+  series.sort((a, b) => a.order - b.order);
   return { fetched: nowEnd, series };
+}
+
+// ---------------------------------------------------------------- USACE
+
+async function fetchUsaceReservoirs() {
+  const series = [];
+  for (const r of USACE_RESERVOIRS) {
+    try {
+      const ts = await fetchJSON(
+        `${USACE}/timeseries?office=${r.office}&name=${encodeURIComponent(r.tsid)}` +
+          `&begin=${nowStart}T00:00:00Z&end=${nowEnd}T23:59:59Z&unit=ac-ft&page-size=5000`,
+        { headers: { Accept: 'application/json;version=2' } }
+      );
+      const map = new Map();
+      for (const [millis, value] of ts.values ?? []) {
+        if (value === null) continue;
+        map.set(iso(new Date(millis)), Number(value));
+      }
+      if (!map.size) throw new Error('no data returned');
+
+      let lat = null, lon = null;
+      await sleep(400);
+      const loc = await fetchJSON(
+        `${USACE}/locations/${encodeURIComponent(r.locationId)}?office=${r.office}`,
+        { headers: { Accept: 'application/json;version=2' } }
+      ).catch(() => null);
+      if (loc) {
+        lat = loc.latitude ?? null;
+        lon = loc.longitude ?? null;
+      }
+
+      series.push({
+        id: `USACE-${r.office}-${r.locationId}`,
+        label: r.label,
+        unit: 'af',
+        capacityAf: r.capacityAf,
+        watershed: r.watershed,
+        order: r.order,
+        lat,
+        lon,
+        points: downsample(padDaily(map, nowStart, nowEnd)),
+      });
+      console.log(`  reservoir ${r.label} (USACE): ${map.size} days`);
+    } catch (err) {
+      failures.push(`reservoir ${r.label} (USACE ${r.tsid}): ${err.message}`);
+      console.warn(`  !! reservoir ${r.label}: ${err.message}`);
+    }
+    await sleep(400);
+  }
+  return series;
 }
 
 // ---------------------------------------------------------------- AWDB
@@ -340,31 +406,12 @@ async function fetchSnowpack() {
     .filter((s) => s.endDate > nowEnd && SNOTEL_HUC_WATERSHEDS[(s.huc ?? '').slice(0, 4)])
     .map((s) => ({ ...s, watershed: SNOTEL_HUC_WATERSHEDS[s.huc.slice(0, 4)] }));
 
-  // The two headwater basins have far more stations than the view can show.
-  // Prefer long records, then keep an even spread across latitude.
-  const picked = [];
-  for (const watershed of order) {
-    const pool = relevant.filter((s) => s.watershed === watershed);
-    const cap = SNOTEL_CAPS[watershed] ?? Infinity;
-    let keep = pool;
-    if (pool.length > cap) {
-      const longRecord = pool.filter((s) => s.beginDate < '2000');
-      const ranked = (longRecord.length >= cap ? longRecord : pool)
-        .sort((a, b) => b.latitude - a.latitude);
-      keep = Array.from(
-        { length: cap },
-        (_, i) => ranked[Math.round((i * (ranked.length - 1)) / (cap - 1))]
-      );
-    }
-    picked.push(...keep.sort((a, b) => b.latitude - a.latitude));
-    if (pool.length) console.log(`  snowpack ${watershed}: keeping ${keep.length} of ${pool.length}`);
-  }
-  console.log(`  snowpack: ${picked.length} SNOTEL stations (of ${stations.length} in NM+CO)`);
-
-  // Batch the WTEQ request in chunks to keep URLs comfortable.
+  // Pull SWE for every candidate first, then keep the stations that actually
+  // carry the snow: ranking on observed peak SWE picks the ones driving runoff
+  // rather than whichever happen to sit at a convenient latitude.
   const byTriplet = new Map();
-  for (let i = 0; i < picked.length; i += 35) {
-    const triplets = picked.slice(i, i + 35).map((s) => s.stationTriplet).join(',');
+  for (let i = 0; i < relevant.length; i += 35) {
+    const triplets = relevant.slice(i, i + 35).map((s) => s.stationTriplet).join(',');
     const data = await fetchJSON(
       `${AWDB}/data?stationTriplets=${encodeURIComponent(triplets)}&elements=WTEQ&duration=DAILY` +
         `&beginDate=${nowStart}&endDate=${nowEnd}`
@@ -372,6 +419,25 @@ async function fetchSnowpack() {
     for (const rec of data ?? []) byTriplet.set(rec.stationTriplet, rec);
     await sleep(400);
   }
+
+  const withPeak = relevant.map((s) => {
+    const values = byTriplet.get(s.stationTriplet)?.data?.[0]?.values ?? [];
+    const peak = values.reduce((a, v) => (v.value > a ? v.value : a), 0);
+    return { ...s, peakSwe: peak };
+  });
+
+  const picked = [];
+  for (const watershed of order) {
+    const pool = withPeak.filter((s) => s.watershed === watershed && s.peakSwe > 0);
+    const cap = SNOTEL_CAPS[watershed] ?? Infinity;
+    const keep = [...pool].sort((a, b) => b.peakSwe - a.peakSwe).slice(0, cap);
+    picked.push(...keep.sort((a, b) => b.latitude - a.latitude));
+    if (pool.length) {
+      const note = pool.length < cap ? ` (only ${pool.length} exist)` : '';
+      console.log(`  snowpack ${watershed}: keeping ${keep.length} of ${pool.length}${note}`);
+    }
+  }
+  console.log(`  snowpack: ${picked.length} SNOTEL stations (of ${stations.length} in NM+CO)`);
 
   const series = [];
   for (const st of picked) {

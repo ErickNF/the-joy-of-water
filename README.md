@@ -11,11 +11,15 @@ of the Arkansas basin (the last Dry Cimarron gage was discontinued in 2024).
 
 - **PRECIPITATION** — NOAA GHCN daily precipitation at 12 weather stations
   spanning the state north to south (Chama to Las Cruces), past 12 months.
-- **SNOWPACK** — NRCS SNOTEL snow water equivalent at 25 mountain stations
+- **SNOWPACK** — NRCS SNOTEL snow water equivalent at 14 mountain stations
   that drain to New Mexico's rivers, including the Colorado headwaters of
-  the Rio Grande and San Juan, past 12 months.
-- **STREAMFLOW** — USGS daily flow at 17 gages (San Juan, Rio Grande, Chama,
-  Pecos, Canadian, Gila), past 12 months.
+  the Rio Grande and San Juan. Each basin keeps the stations holding the most
+  water, ranked on observed peak SWE.
+- **STREAMFLOW** — the Rio Grande mainstem from the Colorado line to below
+  Elephant Butte: Cerro, Otowi Bridge, Albuquerque, San Marcial, and the dam
+  release. There is no El Paso ridge because USGS has no active gage below
+  Elephant Butte — Caballo, Leasburg and El Paso are all discontinued and
+  that reach is gaged by the IBWC, outside the USGS API.
 - **STORAGE** — Bureau of Reclamation reservoir storage. Each reservoir is
   scaled to its own 12-month range so the drawdown-and-refill cycle is
   visible; how full it actually is lives in the label and hover readout.
@@ -93,6 +97,8 @@ Requires Node 18+. The script pulls from:
   period of record
 - Bureau of Reclamation RISE (`data.usbr.gov/rise/api`) — daily reservoir
   storage (acre-feet)
+- USACE CWMS Data API (`cwms-data.usace.army.mil`) — Abiquiu, a Corps lake
+  that RISE does not carry (its RISE catalog item exists but is empty)
 
 Snapshots land in `data/` alongside a `manifest.json` recording the fetch
 window and any per-site failures. Groundwater wells and SNOTEL stations are
