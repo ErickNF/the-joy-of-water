@@ -87,3 +87,25 @@ window and any per-site failures. Groundwater wells and SNOTEL stations are
 rediscovered on each run (SNOTEL by HUC-to-watershed mapping); NOAA stations,
 stream gages, and RISE catalog item IDs are pinned in the config block at the
 top of the script.
+
+## Credit
+
+The visual form is lifted from Peter Saville's cover for Joy Division's
+*Unknown Pleasures* (Factory Records, 1979) — white stacked ridgelines on a
+black field.
+
+That cover is itself a data visualization, which is why the borrowing feels
+apt. The image is a plot of 80 successive radio pulses from CP 1919, the first
+pulsar ever identified — discovered by Jocelyn Bell Burnell in 1967. Harold
+Craft produced the stacked plot for his 1970 Cornell PhD thesis using Arecibo
+data; it was reprinted in *The Cambridge Encyclopaedia of Astronomy* (1977),
+where Saville found it and inverted it to white-on-black. Craft only learned
+his figure had become an album cover when he walked into a record store and
+saw it.
+
+The chart type now carries the name: stacked ridgelines are widely called
+"joyplots" after this very cover.
+
+This project replaces the pulsar's radio pulses with New Mexico's water — the
+same stacked form, different signal. No artwork from the album is reproduced
+here; every ridge is drawn from public agency data.
