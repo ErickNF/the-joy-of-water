@@ -83,7 +83,10 @@ export function renderJoyplot(
   const plotH = plotBottom - plotTop;
   const rowGap = Math.min(plotH / Math.max(nRows, 1), maxRowGap);
   // Never let the first ridge's full-scale peak clip the top edge.
-  const maxAmp = LAYOUT.amplitudeRows * rowGap * Math.max(...groups.map((g) => g.amplitude ?? 1), 0);
+  const maxAmp =
+    LAYOUT.amplitudeRows *
+    rowGap *
+    Math.max(...groups.map((g) => (g.amplitude === undefined ? 1 : g.amplitude)), 0);
   const blockTop = Math.max(plotTop, maxAmp + 10);
   const plotW = LAYOUT.plotRight - LAYOUT.plotLeft;
 
@@ -103,7 +106,8 @@ export function renderJoyplot(
     }
     for (const series of group.series) {
       const baseline = blockTop + row * rowGap;
-      const amplitude = LAYOUT.amplitudeRows * rowGap * (group.amplitude ?? 1);
+      const amplitude =
+        LAYOUT.amplitudeRows * rowGap * (group.amplitude === undefined ? 1 : group.amplitude);
       const values = series.values;
       const n = values.length;
       const x = (i) => LAYOUT.plotLeft + (plotW * i) / (n - 1);
@@ -112,7 +116,7 @@ export function renderJoyplot(
       // Fill: continuous area under the curve (nulls treated as 0 so the
       // fill sits at baseline through gaps), closed along the baseline.
       const fillPts = [];
-      for (let i = 0; i < n; i++) fillPts.push([x(i), y(values[i] ?? 0)]);
+      for (let i = 0; i < n; i++) fillPts.push([x(i), y(values[i] === null ? 0 : values[i])]);
       let dFill = `M${LAYOUT.plotLeft.toFixed(2)},${baseline.toFixed(2)}L${fillPts[0][0].toFixed(2)},${fillPts[0][1].toFixed(2)}`;
       dFill += monotonePath(fillPts);
       dFill += `L${LAYOUT.plotRight.toFixed(2)},${baseline.toFixed(2)}Z`;
@@ -218,7 +222,7 @@ export function renderJoyplot(
         nearest = { ref: r, index: i };
       }
     }
-    return inside ?? nearest;
+    return inside || nearest;
   }
 
   function setDot(ref, index) {
@@ -239,7 +243,7 @@ export function renderJoyplot(
       active.labelNode.classList.remove('active');
     }
     svg.classList.toggle('hovering', !!ref);
-    active = ref ?? null;
+    active = ref || null;
     if (active) {
       active.node.classList.add('active');
       active.labelNode.classList.add('active');

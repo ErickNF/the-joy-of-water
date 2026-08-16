@@ -58,6 +58,26 @@ node scripts/serve.mjs   # zero-dep, http://localhost:4173
 
 (or `npx serve` / `python -m http.server` if you prefer)
 
+## Kiosk mode
+
+Adding `?kiosk` to the URL turns the page into an unattended display: controls
+hidden, site labels forced on (there is no pointer to hover with), all six
+views cycling every 25 seconds, and the plot scaled to fit the screen so
+nothing scrolls. It reloads every six hours to pick up the daily data refresh.
+Tap the screen to bring the controls back for a minute.
+
+    https://ericknf.github.io/the-joy-of-water/?kiosk
+
+Built for an iPad mini 2 mounted in portrait. That device is stuck on iOS 12,
+so the front-end deliberately avoids `?.`, `??` and top-level `await` — all of
+which need iOS 13.4 or later and would otherwise fail to parse, leaving a
+blank page. Keep to that baseline when editing `js/`.
+
+On the iPad: Settings → Display & Brightness → Auto-Lock → Never, then open
+the URL in Safari and use Share → Add to Home Screen so it launches
+full-screen without browser chrome. Guided Access (Settings → Accessibility)
+locks it to the one app.
+
 ## Embedding in another site
 
 The page detects when it is loaded inside an iframe and posts its content

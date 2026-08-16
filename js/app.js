@@ -17,30 +17,11 @@ async function loadJSON(name) {
   return res.json();
 }
 
-const [precipitation, snowpack, streamflow, reservoirs, groundwater, century, manifest, basemap] =
-  await Promise.all(
-    ['precipitation', 'snowpack', 'streamflow', 'reservoirs', 'groundwater', 'century', 'manifest', 'basemap'].map(loadJSON)
-  );
-
-const categoryViews = buildCategoryViews({ precipitation, snowpack, streamflow, reservoirs, groundwater });
-
-// All category views share the same bucket-date axis; Otowi keeps the
-// full-height layout the century view was tuned on.
-const monthTicks = buildMonthTicks(categoryViews.streamflow[0].series[0].dates);
-const catOpts = (extra = {}) => ({ plotTop: 70, maxRowGap: 26, fitHeight: true, monthTicks, ...extra });
-
-const views = {
-  precipitation: { groups: categoryViews.precipitation, opts: catOpts() },
-  snowpack: { groups: categoryViews.snowpack, opts: catOpts() },
-  streamflow: { groups: categoryViews.streamflow, opts: catOpts() },
-  // Reservoir curves are smooth and slow; give them room so they stop
-  // tangling into each other.
-  storage: { groups: categoryViews.storage, opts: catOpts({ maxRowGap: 48 }) },
-  groundwater: { groups: categoryViews.groundwater, opts: catOpts({ maxRowGap: 34 }) },
-  // 126 rows in one block, so a little extra height goes a long way toward
-  // keeping the year labels off each other.
-  otowi: { groups: buildCenturyView(century), opts: { plotBottom: 1265 } },
-};
+// Filled in by init() at the bottom. Kept module-scoped (rather than loaded
+// with a top-level await) so the file parses on older engines — the office
+// display runs an iPad stuck on iOS 12, whose Safari predates that syntax.
+let precipitation, snowpack, streamflow, reservoirs, groundwater, century, manifest, basemap;
+let views, restingInfo;
 
 // Which outline the locator draws for each view.
 const MAP_SHAPE = {
@@ -48,16 +29,47 @@ const MAP_SHAPE = {
   snowpack: { codes: ['CO', 'NM'], frameCodes: ['NM'] },
   groundwater: { county: 'bernalillo' },
 };
-const shapeFor = (viewName) => MAP_SHAPE[viewName] ?? { codes: ['NM'] };
+const shapeFor = (viewName) => MAP_SHAPE[viewName] || { codes: ['NM'] };
 
-const restingInfo = {
-  precipitation: 'NOAA daily precipitation, inches, past 12 months',
-  snowpack: 'NRCS SNOTEL snow water equivalent, inches, past 12 months',
-  streamflow: 'USGS daily streamflow, cubic feet per second, past 12 months',
-  storage: 'Reclamation reservoir storage, acre-feet, past 12 months',
-  groundwater: 'USGS–ABCWUA depth to groundwater, feet, past 12 months',
-  otowi: `${century.label}`,
-};
+const VIEW_ORDER = ['precipitation', 'snowpack', 'streamflow', 'storage', 'groundwater', 'otowi'];
+
+function buildViews() {
+  const categoryViews = buildCategoryViews({
+    precipitation,
+    snowpack,
+    streamflow,
+    reservoirs,
+    groundwater,
+  });
+
+  // All category views share the same bucket-date axis; Otowi keeps the
+  // full-height layout the century view was tuned on.
+  const monthTicks = buildMonthTicks(categoryViews.streamflow[0].series[0].dates);
+  const catOpts = (extra) =>
+    Object.assign({ plotTop: 70, maxRowGap: 26, fitHeight: true, monthTicks }, extra || {});
+
+  views = {
+    precipitation: { groups: categoryViews.precipitation, opts: catOpts() },
+    snowpack: { groups: categoryViews.snowpack, opts: catOpts() },
+    streamflow: { groups: categoryViews.streamflow, opts: catOpts() },
+    // Reservoir curves are smooth and slow; give them room so they stop
+    // tangling into each other.
+    storage: { groups: categoryViews.storage, opts: catOpts({ maxRowGap: 48 }) },
+    groundwater: { groups: categoryViews.groundwater, opts: catOpts({ maxRowGap: 34 }) },
+    // 126 rows in one block, so a little extra height goes a long way toward
+    // keeping the year labels off each other.
+    otowi: { groups: buildCenturyView(century), opts: { plotBottom: 1265 } },
+  };
+
+  restingInfo = {
+    precipitation: 'NOAA daily precipitation, inches, past 12 months',
+    snowpack: 'NRCS SNOTEL snow water equivalent, inches, past 12 months',
+    streamflow: 'USGS daily streamflow, cubic feet per second, past 12 months',
+    storage: 'Reclamation reservoir storage, acre-feet, past 12 months',
+    groundwater: 'USGS–ABCWUA depth to groundwater, feet, past 12 months',
+    otowi: `${century.label}`,
+  };
+}
 
 // --- iframe embedding -----------------------------------------------------
 // When embedded (e.g. in a Squarespace page), drop the full-viewport minimum
@@ -82,7 +94,10 @@ function postHeight() {
 }
 
 if (embedded) {
-  new ResizeObserver(postHeight).observe(document.body);
+  // ResizeObserver arrived after the oldest browser we support; without it the
+  // frame simply sizes on load and view switches instead of continuously.
+  if (typeof ResizeObserver === 'function') new ResizeObserver(postHeight).observe(document.body);
+  window.addEventListener('resize', postHeight);
   window.addEventListener('load', postHeight);
 }
 
@@ -208,14 +223,17 @@ document.getElementById('svg-export').addEventListener('click', () => {
 // hover: map mouse to viewBox coords, hit-test ridges, read out the value
 svg.addEventListener('mousemove', (e) => {
   const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse());
-  const hit = controller?.hitTest(pt.x, pt.y) ?? null;
-  controller?.setActive(hit?.ref ?? null);
-  if (currentView !== 'otowi') controller?.setDot(hit?.ref ?? null, hit?.index);
-  mapControl?.setActive(hit?.ref.series.id ?? null);
+  if (!controller) return;
+  const hit = controller.hitTest(pt.x, pt.y) || null;
+  const ref = hit ? hit.ref : null;
+  controller.setActive(ref);
+  if (currentView !== 'otowi') controller.setDot(ref, hit ? hit.index : undefined);
+  if (mapControl) mapControl.setActive(ref ? ref.series.id : null);
   if (hit) {
     const s = hit.ref.series;
+    const bucketMissing = !s.raw || s.raw[hit.index] === null;
     infoEl.textContent =
-      currentView === 'otowi' || s.raw?.[hit.index] === null
+      currentView === 'otowi' || bucketMissing
         ? `${s.label} · ${s.info}`
         : `${s.label} · ${bucketRange(s.dates[hit.index])} · ${s.fmtValue(s.raw[hit.index])}`;
     infoEl.classList.add('active');
@@ -225,16 +243,78 @@ svg.addEventListener('mousemove', (e) => {
   }
 });
 svg.addEventListener('mouseleave', () => {
-  controller?.setActive(null);
-  controller?.setDot(null);
-  mapControl?.setActive(null);
+  if (controller) {
+    controller.setActive(null);
+    controller.setDot(null);
+  }
+  if (mapControl) mapControl.setActive(null);
   infoEl.textContent = restingInfo[currentView];
   infoEl.classList.remove('active');
 });
 
-const snapshot = manifest.generated?.slice(0, 10) ?? 'unknown';
-footerEl.textContent =
-  `NOAA GHCN · NRCS SNOTEL · USGS Water Data · Bureau of Reclamation RISE · ` +
-  `USGS–ABCWUA cooperative groundwater network — snapshot ${snapshot}`;
+// --- kiosk mode -----------------------------------------------------------
+// ?kiosk turns the page into an unattended display: no controls, labels
+// always on, views cycling on a timer, and the whole plot scaled to fit the
+// screen so nothing needs scrolling. Reloads periodically to pick up the
+// daily data refresh.
 
-show('precipitation');
+const KIOSK_VIEW_MS = 25000;
+const KIOSK_RELOAD_MS = 6 * 60 * 60 * 1000;
+
+function startKiosk() {
+  document.body.classList.add('kiosk');
+  // No pointer to hover with, so the labels are the only way to read the plot.
+  svg.classList.add('labels');
+  labelsButton.classList.add('on');
+
+  let index = 0;
+  show(VIEW_ORDER[index]);
+  setInterval(() => {
+    index = (index + 1) % VIEW_ORDER.length;
+    show(VIEW_ORDER[index]);
+  }, KIOSK_VIEW_MS);
+
+  // The data bot commits a fresh snapshot every morning; pick it up without
+  // anyone touching the iPad.
+  setTimeout(() => window.location.reload(), KIOSK_RELOAD_MS);
+
+  // Tapping the screen brings the controls back for a minute.
+  document.body.addEventListener('click', () => {
+    document.body.classList.remove('kiosk');
+    setTimeout(() => document.body.classList.add('kiosk'), 60000);
+  });
+}
+
+async function init() {
+  const files = [
+    'precipitation',
+    'snowpack',
+    'streamflow',
+    'reservoirs',
+    'groundwater',
+    'century',
+    'manifest',
+    'basemap',
+  ];
+  const loaded = await Promise.all(files.map(loadJSON));
+  precipitation = loaded[0];
+  snowpack = loaded[1];
+  streamflow = loaded[2];
+  reservoirs = loaded[3];
+  groundwater = loaded[4];
+  century = loaded[5];
+  manifest = loaded[6];
+  basemap = loaded[7];
+
+  buildViews();
+
+  const snapshot = manifest.generated ? manifest.generated.slice(0, 10) : 'unknown';
+  footerEl.textContent =
+    `NOAA GHCN · NRCS SNOTEL · USGS Water Data · Bureau of Reclamation RISE · ` +
+    `USGS–ABCWUA cooperative groundwater network — snapshot ${snapshot}`;
+
+  if (/[?&]kiosk\b/.test(window.location.search)) startKiosk();
+  else show('precipitation');
+}
+
+init();

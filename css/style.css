@@ -205,6 +205,50 @@ html.embedded header { position: static; }
 
 .site-dot.active { fill: #f2f2f2; }
 
+/* Kiosk: an unattended wall display. Controls hidden, the plot scaled to the
+   screen so every view fits without scrolling, and the locator dropped — at
+   tablet width it would sit on top of the ridge labels, and it is unreadable
+   at that size anyway. Tap anywhere to bring the controls back for a minute. */
+body.kiosk { overflow: hidden; }
+
+body.kiosk main {
+  height: 100vh;
+  padding: 16px 12px 10px;
+  justify-content: flex-start;
+}
+
+body.kiosk header {
+  position: static;
+  padding-bottom: 0;
+}
+
+body.kiosk #toggle,
+body.kiosk #labels-row,
+body.kiosk #locator,
+body.kiosk #credit {
+  display: none;
+}
+
+body.kiosk #info {
+  margin-top: 0;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: #8a8a8a;
+}
+
+/* A fixed box: the SVG scales itself to fit inside, letterboxed, so tall
+   views shrink to the screen instead of running off the bottom. */
+body.kiosk #plot {
+  width: 100%;
+  height: calc(100vh - 92px);
+  margin-top: 10px;
+}
+
+body.kiosk footer {
+  margin-top: 6px;
+  font-size: 9px;
+}
+
 footer {
   margin-top: 28px;
   font-size: 9.5px;

@@ -33,9 +33,11 @@ export function renderLocatorMap(
   svg,
   { basemap, codes = [], county = null, frameCodes = null, sites = [], yTop, centerX, maxWidth, maxHeight }
 ) {
+  const counties = basemap.counties || {};
+  const states = basemap.states || {};
   const outline = county
-    ? basemap.counties?.[county] ?? []
-    : codes.flatMap((c) => basemap.states?.[c] ?? []);
+    ? counties[county] || []
+    : codes.flatMap((c) => states[c] || []);
   if (!outline.length) return { width: 0, height: 0, setActive() {} };
 
   // Frame on the home shape plus wherever the sites actually are, rather than
@@ -43,7 +45,7 @@ export function renderLocatorMap(
   // its southern edge, and framing on all of Colorado leaves a dead rectangle.
   const frameRings = county
     ? outline
-    : (frameCodes ?? codes).flatMap((c) => basemap.states?.[c] ?? []);
+    : (frameCodes || codes).flatMap((c) => states[c] || []);
   const framePoints = [
     ...frameRings.flat(),
     ...sites.filter((s) => s.lat != null && s.lon != null).map((s) => [s.lon, s.lat]),
@@ -92,7 +94,7 @@ export function renderLocatorMap(
   const framed = el('g', { 'clip-path': `url(#${frameClipId})` });
 
   const riverGroup = el('g', { 'clip-path': `url(#${riverClipId})` });
-  for (const line of basemap.rivers ?? []) {
+  for (const line of basemap.rivers || []) {
     riverGroup.appendChild(el('path', { d: ringPath(line, project), class: 'river' }));
   }
   framed.appendChild(riverGroup);
@@ -116,7 +118,7 @@ export function renderLocatorMap(
       activeDot.classList.remove('active');
       activeDot.setAttribute('r', 1.9);
     }
-    activeDot = id == null ? null : dots.get(id) ?? null;
+    activeDot = id == null ? null : dots.get(id) || null;
     if (activeDot) {
       activeDot.classList.add('active');
       activeDot.setAttribute('r', 3.4);

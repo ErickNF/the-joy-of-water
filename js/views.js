@@ -36,7 +36,10 @@ const shortDate = (dateISO) => {
 };
 
 // Fields every series carries through to the renderer and the site map.
-const common = (s) => ({ id: s.id, lat: s.lat ?? null, lon: s.lon ?? null });
+const orZero = (v) => (v === null || v === undefined ? 0 : v);
+const orNull = (v) => (v === undefined ? null : v);
+
+const common = (s) => ({ id: s.id, lat: orNull(s.lat), lon: orNull(s.lon) });
 
 // --- per-source normalizations: ------------------------------------------
 // precip: clamp to per-station p99 so one storm doesn't flatten the ridge
@@ -49,12 +52,12 @@ const common = (s) => ({ id: s.id, lat: s.lat ?? null, lon: s.lon ?? null });
 function precipSeries(s) {
   const cap = Math.max(percentile(s.points.map((p) => p[1]), 0.99), 0.01);
   const values = s.points.map(([, v]) => (v === null ? null : Math.min(v / cap, 1)));
-  const total = s.points.reduce((a, [, v]) => a + (v ?? 0), 0);
+  const total = s.points.reduce((a, [, v]) => a + orZero(v), 0);
   const { peak } = peakAt(s.points);
   return {
     ...common(s),
     label: s.label,
-    stats: `${fmt(total, 1)} in total · ${fmt(peak ?? 0, 2)} in peak`,
+    stats: `${fmt(total, 1)} in total · ${fmt(orZero(peak), 2)} in peak`,
     info: `${fmt(total, 1)} in over 12 months`,
     values,
     dates: s.points.map((p) => p[0]),
@@ -64,7 +67,7 @@ function precipSeries(s) {
 }
 
 function snowpackSeries(s) {
-  const max = Math.max(...s.points.map(([, v]) => v ?? 0), 0.1);
+  const max = Math.max(...s.points.map(([, v]) => orZero(v)), 0.1);
   const values = s.points.map(([, v]) => (v === null ? null : Math.max(v, 0) / max));
   const { peak, index } = peakAt(s.points);
   return {
@@ -80,18 +83,18 @@ function snowpackSeries(s) {
 }
 
 function streamSeries(s) {
-  const max = Math.max(...s.points.map(([, v]) => v ?? 0), 1);
+  const max = Math.max(...s.points.map(([, v]) => orZero(v)), 1);
   const values = s.points.map(([, v]) =>
     v === null ? null : Math.sqrt(Math.max(v, 0)) / Math.sqrt(max)
   );
   const now = latest(s.points);
   const { peak } = peakAt(s.points);
   // Each bucket holds a mean flow that stood for BUCKET_DAYS days.
-  const volumeAf = s.points.reduce((a, [, v]) => a + (v ?? 0) * BUCKET_DAYS * CFS_DAY_TO_AF, 0);
+  const volumeAf = s.points.reduce((a, [, v]) => a + orZero(v) * BUCKET_DAYS * CFS_DAY_TO_AF, 0);
   return {
     ...common(s),
     label: s.label,
-    stats: `${fmt(volumeAf)} af total · ${fmt(peak ?? 0)} cfs peak`,
+    stats: `${fmt(volumeAf)} af total · ${fmt(orZero(peak))} cfs peak`,
     info: now === null ? 'no recent data' : `latest ${fmt(now)} cfs`,
     values,
     dates: s.points.map((p) => p[0]),
