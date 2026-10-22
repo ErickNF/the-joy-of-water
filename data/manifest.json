@@ -1,1 +1,1 @@
-{"generated":"2026-10-21T15:56:54.632Z","window":["2025-10-20","2026-10-21"],"counts":{"precipitation":12,"snowpack":14,"streamflow":14,"reservoirs":8,"groundwater":14,"centuryYears":126},"failures":[]}
+{"generated":"2026-10-22T15:53:18.586Z","window":["2025-10-21","2026-10-22"],"counts":{"precipitation":12,"snowpack":14,"streamflow":14,"reservoirs":7,"groundwater":14,"centuryYears":126},"failures":["reservoir Abiquiu (USACE Abiquiu.Stor.Inst.~1Day.0.MRS): HTTP 503"]}
